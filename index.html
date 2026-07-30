@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI SMART - Trang chủ</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div id="authScreen" class="auth-screen">
+  <div class="auth-card">
+    <h1>AI SMART</h1>
+    <p class="subtitle">Nền tảng học tập cùng AI theo phương pháp SMART: gợi ý thay vì đưa đáp án ngay.</p>
+    <div class="tabs">
+      <button id="tabLogin" class="tab active">Đăng nhập</button>
+      <button id="tabSignup" class="tab">Đăng ký</button>
+    </div>
+    <input id="authEmail" type="email" placeholder="Email" autocomplete="username" />
+    <input id="authPassword" type="password" placeholder="Mật khẩu" autocomplete="current-password" />
+    <button id="submitBtn" class="primary-btn">Đăng nhập</button>
+    <div id="authMessage" class="auth-message"></div>
+  </div>
+</div>
+
+<div id="dashboard" style="display:none;">
+  <header class="topbar">
+    <div class="brand">AI SMART</div>
+    <nav class="nav-links">
+      <a href="chatbot.html">AI SMART Chatbot</a>
+      <a href="passport.html">AI Learning Passport</a>
+      <a href="settings.html">Cài đặt API</a>
+    </nav>
+    <div class="user-info">
+      <span id="userEmail"></span>
+      <button id="logoutBtn" class="ghost-btn">Đăng xuất</button>
+    </div>
+  </header>
+
+  <main class="content">
+    <div class="landing-grid">
+      <a class="feature-card" href="chatbot.html">
+        <h2>🧭 AI SMART Chatbot</h2>
+        <p>Hỏi bài như bình thường, nhưng AI sẽ hướng dẫn theo 5 bước State → Missing → Assist → Resolve → Test thay vì đưa đáp án ngay.</p>
+      </a>
+      <a class="feature-card" href="passport.html">
+        <h2>📊 AI Learning Passport & ACI</h2>
+        <p>Xem lại toàn bộ lịch sử sử dụng AI của bạn, biểu đồ tiến bộ, và chỉ số AI Crutch Index (ACI) đánh giá mức độ phụ thuộc vào AI.</p>
+      </a>
+    </div>
+    <p style="font-size:12px; color:var(--ink-soft); margin-top:18px;">
+      Mẹo: vào mục <a href="settings.html">Cài đặt API</a> để nhập Endpoint / Model / API key một lần duy nhất — Chatbot và Passport sẽ dùng lại tự động.
+    </p>
+  </main>
+</div>
+
+<script type="module">
+  import { watchAuth, login, signup, logout, translateFirebaseError } from "./auth-web.js";
+
+  const authScreen = document.getElementById("authScreen");
+  const dashboard = document.getElementById("dashboard");
+  const authEmail = document.getElementById("authEmail");
+  const authPassword = document.getElementById("authPassword");
+  const authMessage = document.getElementById("authMessage");
+  const submitBtn = document.getElementById("submitBtn");
+  const tabLogin = document.getElementById("tabLogin");
+  const tabSignup = document.getElementById("tabSignup");
+  const userEmailEl = document.getElementById("userEmail");
+  const logoutBtn = document.getElementById("logoutBtn");
+
+  let mode = "login";
+  function setMode(m) {
+    mode = m;
+    tabLogin.classList.toggle("active", m === "login");
+    tabSignup.classList.toggle("active", m === "signup");
+    submitBtn.textContent = m === "login" ? "Đăng nhập" : "Đăng ký";
+    authMessage.textContent = "";
+  }
+  tabLogin.onclick = () => setMode("login");
+  tabSignup.onclick = () => setMode("signup");
+
+  submitBtn.onclick = async () => {
+    const email = authEmail.value.trim();
+    const password = authPassword.value;
+    authMessage.textContent = "";
+    if (!email || !password) { authMessage.textContent = "Vui lòng nhập đầy đủ email và mật khẩu."; return; }
+    try {
+      if (mode === "login") await login(email, password);
+      else {
+        if (password.length < 6) { authMessage.textContent = "Mật khẩu phải có ít nhất 6 ký tự."; return; }
+        await signup(email, password);
+      }
+    } catch (err) {
+      authMessage.textContent = translateFirebaseError(err);
+    }
+  };
+
+  logoutBtn.onclick = () => logout();
+
+  watchAuth(
+    (user) => {
+      authScreen.style.display = "none";
+      dashboard.style.display = "block";
+      userEmailEl.textContent = user.email;
+    },
+    () => {
+      authScreen.style.display = "flex";
+      dashboard.style.display = "none";
+    }
+  );
+</script>
+</body>
+</html>

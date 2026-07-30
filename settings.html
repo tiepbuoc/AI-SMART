@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cài đặt API - AI SMART</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div id="guard" class="auth-screen"><p>Đang kiểm tra đăng nhập...</p></div>
+
+<div id="page" style="display:none;">
+  <header class="topbar">
+    <div class="brand">AI SMART</div>
+    <nav class="nav-links">
+      <a href="index.html">Trang chủ</a>
+      <a href="chatbot.html">Chatbot</a>
+      <a href="passport.html">Passport</a>
+      <a href="settings.html" class="active">Cài đặt API</a>
+    </nav>
+    <div class="user-info">
+      <span id="userEmail"></span>
+      <button id="logoutBtn" class="ghost-btn">Đăng xuất</button>
+    </div>
+  </header>
+
+  <main class="content">
+    <div class="card" style="max-width:480px;">
+      <h2 class="section-title">Cài đặt API</h2>
+      <p style="font-size:12.5px; color:var(--ink-soft); line-height:1.5; margin-top:0;">
+        Nhập thông tin API của bạn (endpoint dạng OpenAI-compatible). Thông tin này lưu vào
+        Firestore theo tài khoản, dùng chung cho AI SMART Chatbot và AI Learning Passport.
+      </p>
+
+      <label style="font-size:12px; color:var(--ink-soft);">Endpoint</label>
+      <input id="endpoint" type="text" placeholder="https://api.shopaikey.com/v1"
+        style="width:100%; padding:9px 10px; margin:4px 0 12px; border:1px solid var(--line); border-radius:4px;" />
+
+      <label style="font-size:12px; color:var(--ink-soft);">Model</label>
+      <input id="model" type="text" placeholder="gpt-5.4-nano"
+        style="width:100%; padding:9px 10px; margin:4px 0 12px; border:1px solid var(--line); border-radius:4px;" />
+
+      <label style="font-size:12px; color:var(--ink-soft);">API Key</label>
+      <input id="apiKey" type="password" placeholder="Nhập API key của bạn..."
+        style="width:100%; padding:9px 10px; margin:4px 0 6px; border:1px solid var(--line); border-radius:4px;" />
+      <p style="font-size:11px; color:var(--warn); margin:0 0 14px;">
+        ⚠️ Lưu ý: API key được lưu ở phía client (Firestore) để tiện dùng lại, không phải là bảo mật tuyệt đối.
+        Không dùng chung key với hệ thống quan trọng khác.
+      </p>
+
+      <button id="saveBtn" class="primary-btn">Lưu cài đặt</button>
+      <div id="msg" style="font-size:12.5px; margin-top:8px;"></div>
+    </div>
+  </main>
+</div>
+
+<script type="module">
+  import { watchAuth, logout, getApiConfig, saveApiConfig } from "./auth-web.js";
+
+  const guard = document.getElementById("guard");
+  const page = document.getElementById("page");
+  const userEmailEl = document.getElementById("userEmail");
+  const logoutBtn = document.getElementById("logoutBtn");
+  const endpointEl = document.getElementById("endpoint");
+  const modelEl = document.getElementById("model");
+  const apiKeyEl = document.getElementById("apiKey");
+  const saveBtn = document.getElementById("saveBtn");
+  const msgEl = document.getElementById("msg");
+
+  let currentUid = null;
+
+  watchAuth(
+    async (user) => {
+      currentUid = user.uid;
+      guard.style.display = "none";
+      page.style.display = "block";
+      userEmailEl.textContent = user.email;
+      const cfg = await getApiConfig(user.uid);
+      endpointEl.value = cfg.endpoint;
+      modelEl.value = cfg.model;
+      apiKeyEl.value = cfg.apiKey;
+    },
+    () => { window.location.href = "index.html"; }
+  );
+
+  logoutBtn.onclick = () => logout();
+
+  saveBtn.onclick = async () => {
+    if (!currentUid) return;
+    msgEl.style.color = "var(--ink-soft)";
+    msgEl.textContent = "Đang lưu...";
+    try {
+      await saveApiConfig(currentUid, {
+        endpoint: endpointEl.value.trim(),
+        model: modelEl.value.trim(),
+        apiKey: apiKeyEl.value.trim(),
+      });
+      msgEl.style.color = "var(--accent)";
+      msgEl.textContent = "Đã lưu cài đặt.";
+    } catch (err) {
+      msgEl.style.color = "var(--danger)";
+      msgEl.textContent = "Lỗi khi lưu: " + err.message;
+    }
+  };
+</script>
+</body>
+</html>

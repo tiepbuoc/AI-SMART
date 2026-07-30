@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Learning Passport & ACI</title>
+<link rel="stylesheet" href="style.css" />
+<style>
+  .loading-screen{ min-height: calc(100vh - 60px); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:14px; }
+  .spinner{ width:34px; height:34px; border:3px solid var(--line); border-top-color:var(--accent);
+    border-radius:50%; animation:spin 0.9s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .loading-text{ font-size:13px; color:var(--ink-soft); font-family:'IBM Plex Mono', monospace; }
+
+  .stat-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:18px; }
+  .stat-card{ background:var(--card); border:1px solid var(--line); border-radius:4px; padding:14px 16px; }
+  .stat-card .num{ font-family:'Space Grotesk',sans-serif; font-size:24px; font-weight:700; }
+  .stat-card .label{ font-size:11px; color:var(--ink-soft); margin-top:2px; }
+
+  .chart-row{ display:grid; grid-template-columns:1.4fr 1fr; gap:16px; margin-bottom:18px; }
+  canvas{ max-width:100%; }
+
+  table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  th,td{ text-align:left; padding:8px 8px; border-bottom:1px solid var(--line); }
+  th{ font-size:11px; color:var(--ink-soft); font-weight:600; }
+  .pill{ font-family:'IBM Plex Mono',monospace; font-size:11px; padding:2px 6px; border-radius:3px; color:#fff; }
+  .pill.low{ background:#2f6f6a; }
+  .pill.mid{ background:#b8863b; }
+  .pill.high{ background:#b3403a; }
+
+  @media (max-width:700px){
+    .stat-grid{ grid-template-columns:repeat(2,1fr); }
+    .chart-row{ grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div id="guard" class="auth-screen"><p>Đang kiểm tra đăng nhập...</p></div>
+
+<div id="page" style="display:none;">
+  <header class="topbar">
+    <div class="brand">AI SMART</div>
+    <nav class="nav-links">
+      <a href="index.html">Trang chủ</a>
+      <a href="chatbot.html">Chatbot</a>
+      <a href="passport.html" class="active">Passport</a>
+      <a href="settings.html">Cài đặt API</a>
+    </nav>
+    <div class="user-info">
+      <span id="userEmail"></span>
+      <button id="logoutBtn" class="ghost-btn">Đăng xuất</button>
+    </div>
+  </header>
+
+  <div id="loadingScreen" class="loading-screen">
+    <div class="spinner"></div>
+    <div id="loadingText" class="loading-text">Đang tải dữ liệu...</div>
+  </div>
+
+  <main id="dashboardContent" class="content" style="display:none;">
+    <h2 class="section-title">AI Learning Passport</h2>
+
+    <div class="stat-grid">
+      <div class="stat-card"><div id="statAci" class="num">-</div><div class="label">ACI trung bình</div></div>
+      <div class="stat-card"><div id="statEffort" class="num">-</div><div class="label">Nỗ lực tự thân TB</div></div>
+      <div class="stat-card"><div id="statComplexity" class="num">-</div><div class="label">Độ phức tạp TB</div></div>
+      <div class="stat-card"><div id="statTotal" class="num">-</div><div class="label">Tổng số câu hỏi</div></div>
+    </div>
+
+    <div class="chart-row">
+      <div class="card">
+        <h3 class="section-title" style="font-size:13px;">Xu hướng ACI theo thời gian</h3>
+        <canvas id="aciTrendChart" height="160"></canvas>
+      </div>
+      <div class="card">
+        <h3 class="section-title" style="font-size:13px;">Phân bố theo môn học</h3>
+        <canvas id="subjectChart" height="160"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 class="section-title" style="font-size:13px;">Lịch sử chi tiết</h3>
+      <table>
+        <thead>
+          <tr><th>Thời gian</th><th>Nền tảng</th><th>Câu hỏi</th><th>ACI</th><th>Rủi ro ỷ lại</th></tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script type="module">
+import { watchAuth, getApiConfig } from "./auth-web.js";
+import { db } from "./firebase-config.js";
+import {
+  collection, query, where, getDocs, doc, updateDoc,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { analyzePromptsBatch, subjectCodeToLabel } from "./smart-shared.js";
+
+const guard = document.getElementById("guard");
+const page = document.getElementById("page");
+const userEmailEl = document.getElementById("userEmail");
+const logoutBtn = document.getElementById("logoutBtn");
+const loadingScreen = document.getElementById("loadingScreen");
+const loadingText = document.getElementById("loadingText");
+const dashboardContent = document.getElementById("dashboardContent");
+
+watchAuth(
+  async (user) => {
+    guard.style.display = "none";
+    page.style.display = "block";
+    userEmailEl.textContent = user.email;
+    await runPipeline(user.uid);
+  },
+  () => { window.location.href = "index.html"; }
+);
+
+document.getElementById("logoutBtn").onclick = async () => {
+  const { logout } = await import("./auth-web.js");
+  logout();
+};
+
+async function runPipeline(uid) {
+  try {
+    loadingText.textContent = "Đang tải cấu hình API...";
+    const apiConfig = await getApiConfig(uid);
+
+    loadingText.textContent = "Đang tải lịch sử sử dụng AI...";
+    const entriesCol = collection(db, "users", uid, "entries");
+
+    // 1. Lấy các prompt CHƯA được phân tích
+    const unanalyzedSnap = await getDocs(query(entriesCol, where("analyzed", "==", false)));
+    const unanalyzed = unanalyzedSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+    if (unanalyzed.length > 0) {
+      if (!apiConfig.apiKey) {
+        loadingText.textContent = `Có ${unanalyzed.length} câu hỏi chưa phân tích nhưng chưa có API key. Vào 'Cài đặt API' để thêm.`;
+      } else {
+        loadingText.textContent = `Đang phân tích ${unanalyzed.length} câu hỏi mới bằng AI...`;
+        const texts = unanalyzed.map((e) => e.text || "");
+        const results = await analyzePromptsBatch({
+          endpoint: apiConfig.endpoint,
+          apiKey: apiConfig.apiKey,
+          model: apiConfig.model,
+          prompts: texts,
+        });
+
+        loadingText.textContent = "Đang lưu kết quả phân tích...";
+        for (let i = 0; i < unanalyzed.length; i++) {
+          const [aci, complexity, effort, subjectCode, riskScore] = results[i];
+          await updateDoc(doc(db, "users", uid, "entries", unanalyzed[i].id), {
+            analysis: { aci, complexity, effort, subjectCode, riskScore },
+            analyzed: true,
+          });
+        }
+      }
+    }
+
+    // 2. Lấy TOÀN BỘ entries đã phân tích để dựng dashboard
+    loadingText.textContent = "Đang tổng hợp thống kê...";
+    const allSnap = await getDocs(query(entriesCol, where("analyzed", "==", true)));
+    const allEntries = allSnap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => new Date(a.time) - new Date(b.time));
+
+    renderDashboard(allEntries);
+
+    loadingScreen.style.display = "none";
+    dashboardContent.style.display = "block";
+  } catch (err) {
+    loadingText.textContent = "Lỗi: " + err.message;
+  }
+}
+
+function riskPillClass(score) {
+  if (score >= 66) return "high";
+  if (score >= 33) return "mid";
+  return "low";
+}
+
+function formatTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString("vi-VN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+function renderDashboard(entries) {
+  const withAnalysis = entries.filter((e) => e.analysis);
+  const total = withAnalysis.length;
+
+  const avg = (key) =>
+    total === 0 ? 0 : Math.round(withAnalysis.reduce((s, e) => s + (e.analysis[key] || 0), 0) / total);
+
+  document.getElementById("statAci").textContent = avg("aci");
+  document.getElementById("statEffort").textContent = avg("effort");
+  document.getElementById("statComplexity").textContent = avg("complexity");
+  document.getElementById("statTotal").textContent = total;
+
+  // ---- Chart: xu hướng ACI theo thời gian ----
+  const trendLabels = withAnalysis.map((e) => formatTime(e.time));
+  const trendData = withAnalysis.map((e) => e.analysis.aci);
+  new Chart(document.getElementById("aciTrendChart"), {
+    type: "line",
+    data: {
+      labels: trendLabels,
+      datasets: [{
+        label: "AI Crutch Index",
+        data: trendData,
+        borderColor: "#2f6f6a",
+        backgroundColor: "rgba(47,111,106,0.12)",
+        tension: 0.25,
+        fill: true,
+        pointRadius: 2,
+      }],
+    },
+    options: {
+      scales: { y: { min: 0, max: 100 } },
+      plugins: { legend: { display: false } },
+    },
+  });
+
+  // ---- Chart: phân bố theo môn học ----
+  const subjectCounts = {};
+  withAnalysis.forEach((e) => {
+    const label = subjectCodeToLabel(e.analysis.subjectCode);
+    subjectCounts[label] = (subjectCounts[label] || 0) + 1;
+  });
+  new Chart(document.getElementById("subjectChart"), {
+    type: "doughnut",
+    data: {
+      labels: Object.keys(subjectCounts),
+      datasets: [{
+        data: Object.values(subjectCounts),
+        backgroundColor: ["#2f6f6a", "#b8863b", "#b3403a", "#5b7fae", "#8a6fae", "#7a7a7a"],
+      }],
+    },
+    options: { plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 10 } } } } },
+  });
+
+  // ---- Bảng lịch sử ----
+  const tbody = document.getElementById("historyBody");
+  tbody.innerHTML = "";
+  withAnalysis.slice().reverse().slice(0, 100).forEach((e) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${formatTime(e.time)}</td>
+      <td>${e.site || "-"}</td>
+      <td style="max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></td>
+      <td><span class="pill ${riskPillClass(e.analysis.aci)}">${e.analysis.aci}</span></td>
+      <td><span class="pill ${riskPillClass(e.analysis.riskScore)}">${e.analysis.riskScore}</span></td>
+    `;
+    tr.children[2].textContent = e.text || "";
+    tbody.appendChild(tr);
+  });
+}
+</script>
+</body>
+</html>

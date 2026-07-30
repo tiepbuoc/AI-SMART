@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI SMART Chatbot</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1f232c; --border:#2a2f3a;
+    --text:#e6e8ec; --muted:#9aa3b2; --accent2:#5b8cff; --user:#2b3a55; --bot:#20242c;
+  }
+  body{ height:100vh; overflow:hidden; }
+  #chatWrap{ height:100vh; display:flex; flex-direction:column; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  .cb-header{ padding:12px 20px; background:var(--panel); border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+  .cb-header h1{ font-size:15px; margin:0; font-weight:600; }
+  .smart-steps{ display:flex; gap:6px; font-size:10.5px; color:var(--muted); flex-wrap:wrap; }
+  .smart-steps span{ background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:3px 8px; }
+  #chat{ flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:14px; }
+  .msg{max-width:75%; padding:10px 14px; border-radius:14px; line-height:1.5; font-size:14.5px; white-space:pre-wrap; word-wrap:break-word;}
+  .msg.user{align-self:flex-end; background:var(--user); border-bottom-right-radius:4px;}
+  .msg.bot{align-self:flex-start; background:var(--bot); border:1px solid var(--border); border-bottom-left-radius:4px;}
+  .msg.error{align-self:flex-start; background:#3a1f22; border:1px solid #6b2b31; color:#ffb4bb;}
+  .role-label{font-size:11px; color:var(--muted); margin-bottom:4px; font-weight:600;}
+  #inputBar{ padding:14px 20px; background:var(--panel); border-top:1px solid var(--border);
+    display:flex; flex-direction:column; gap:8px; }
+  #row2{display:flex; gap:8px; align-items:flex-end;}
+  #textInput{ flex:1; resize:none; min-height:44px; max-height:140px; padding:11px 14px;
+    background:var(--panel2); border:1px solid var(--border); color:var(--text);
+    border-radius:12px; font-size:14.5px; outline:none; font-family:inherit; }
+  #textInput:focus{border-color:var(--accent2);}
+  button.icon-btn{ width:44px; height:44px; border-radius:12px; border:1px solid var(--border);
+    background:var(--panel2); color:var(--text); cursor:pointer; font-size:18px;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  #sendBtn{ background:var(--accent2); border:none; color:#fff; font-weight:600; }
+  #sendBtn:disabled{opacity:.5; cursor:not-allowed;}
+  #status{font-size:12px; color:var(--muted); min-height:16px;}
+  .need-config{ padding:40px 20px; text-align:center; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<div id="guard" class="auth-screen"><p>Đang kiểm tra đăng nhập...</p></div>
+
+<div id="chatWrap" style="display:none;">
+  <header class="cb-header">
+    <h1>🧭 AI SMART Chatbot</h1>
+    <div class="smart-steps">
+      <span>1. State</span><span>2. Missing</span><span>3. Assist</span><span>4. Resolve</span><span>5. Test</span>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <a href="index.html" style="color:var(--muted); font-size:12px;">← Trang chủ</a>
+      <a href="settings.html" style="color:var(--muted); font-size:12px;">Cài đặt API</a>
+    </div>
+  </header>
+
+  <div id="chat"></div>
+
+  <div id="inputBar">
+    <div id="status"></div>
+    <div id="row2">
+      <textarea id="textInput" placeholder="Nhập câu hỏi bài tập của bạn... (Enter để gửi, Shift+Enter xuống dòng)"></textarea>
+      <button class="icon-btn" id="sendBtn" title="Gửi">➤</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { watchAuth } from "./auth-web.js";
+import { getApiConfig } from "./auth-web.js";
+import { db } from "./firebase-config.js";
+import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { SMART_SYSTEM_PROMPT, callAiApi } from "./smart-shared.js";
+
+const guard = document.getElementById("guard");
+const chatWrap = document.getElementById("chatWrap");
+const chatEl = document.getElementById('chat');
+const textInput = document.getElementById('textInput');
+const sendBtn = document.getElementById('sendBtn');
+const statusEl = document.getElementById('status');
+
+let currentUser = null;
+let apiConfig = null;
+let history = [{ role: "system", content: SMART_SYSTEM_PROMPT }];
+
+watchAuth(
+  async (user) => {
+    currentUser = user;
+    apiConfig = await getApiConfig(user.uid);
+    guard.style.display = "none";
+    chatWrap.style.display = "flex";
+    if (!apiConfig.apiKey) {
+      statusEl.textContent = "⚠️ Bạn chưa cấu hình API key. Vào 'Cài đặt API' để thêm.";
+    }
+  },
+  () => { window.location.href = "index.html"; }
+);
+
+textInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+sendBtn.onclick = sendMessage;
+
+function addMessageToUI(role, text){
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ' + role;
+  const label = role === 'user' ? 'Bạn' : role === 'bot' ? 'AI SMART' : 'Lỗi';
+  wrap.innerHTML = `<div class="role-label">${label}</div><div></div>`;
+  wrap.querySelector('div:last-child').textContent = text;
+  chatEl.appendChild(wrap);
+  chatEl.scrollTop = chatEl.scrollHeight;
+  return wrap;
+}
+
+async function logToFirestore(userText, botReply) {
+  if (!currentUser) return;
+  try {
+    await addDoc(collection(db, "users", currentUser.uid, "entries"), {
+      site: "website-chatbot",
+      text: userText,
+      reply: botReply,
+      time: new Date().toISOString(),
+      analyzed: false,
+      createdAt: serverTimestamp(),
+    });
+  } catch (e) {
+    console.error("Không lưu được log:", e);
+  }
+}
+
+async function sendMessage(){
+  const text = textInput.value.trim();
+  if (!text) return;
+  if (!apiConfig || !apiConfig.apiKey) {
+    statusEl.textContent = '⚠️ Vui lòng cấu hình API key ở trang Cài đặt trước.';
+    return;
+  }
+
+  addMessageToUI('user', text);
+  history.push({ role: 'user', content: text });
+  textInput.value = '';
+  sendBtn.disabled = true;
+  statusEl.textContent = '⏳ Đang gửi yêu cầu...';
+
+  const botMsgEl = addMessageToUI('bot', '...');
+
+  try {
+    const reply = await callAiApi({
+      endpoint: apiConfig.endpoint,
+      apiKey: apiConfig.apiKey,
+      model: apiConfig.model,
+      messages: history,
+    });
+    botMsgEl.querySelector('div:last-child').textContent = reply || '(Không có nội dung trả về)';
+    history.push({ role: 'assistant', content: reply });
+    statusEl.textContent = '';
+    logToFirestore(text, reply);
+  } catch (err) {
+    botMsgEl.remove();
+    addMessageToUI('error', 'Lỗi khi gọi API: ' + err.message);
+    statusEl.textContent = '';
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
