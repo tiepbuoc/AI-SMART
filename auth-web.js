@@ -49,11 +49,14 @@ export function watchAuth(onLogin, onLogout) {
   });
 }
 
-// ---- Cài đặt API (endpoint / model / apiKey), lưu theo tài khoản ----
+// ---- Cài đặt API (endpoint / model / apiKey) ----
+// Mặc định dùng luôn API test cố định của bạn (theo yêu cầu), không bắt buộc
+// phải vào trang Cài đặt mới dùng được. Nếu Firestore có lưu cấu hình khác
+// (đã từng bấm "Lưu cài đặt"), cấu hình đó sẽ được ưu tiên dùng thay thế.
 const DEFAULT_API_CONFIG = {
   endpoint: "https://api.shopaikey.com/v1",
   model: "gpt-5.4-nano",
-  apiKey: "",
+  apiKey: "sk-4150297863e3eee405805e8609648e6c5cebb1b502ffb46e",
 };
 
 export async function getApiConfig(uid) {

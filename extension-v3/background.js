@@ -11,13 +11,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+// Cấu hình API mặc định cố định (API test của bạn, theo yêu cầu).
+// Nếu popup đã đăng nhập và đồng bộ cấu hình khác từ Firestore, cấu hình đó
+// (lưu trong chrome.storage.local.apiConfig) sẽ được ưu tiên dùng thay thế.
+const DEFAULT_API_CONFIG = {
+  endpoint: "https://api.shopaikey.com/v1",
+  model: "gpt-5.4-nano",
+  apiKey: "sk-4150297863e3eee405805e8609648e6c5cebb1b502ffb46e",
+};
+
 async function handleRewrite(text) {
-  const { apiConfig } = await chrome.storage.local.get({ apiConfig: null });
-  if (!apiConfig || !apiConfig.apiKey) {
-    throw new Error(
-      "Chưa có API key. Mở popup tiện ích, đăng nhập và đảm bảo đã cấu hình API ở trang web (mục Cài đặt API)."
-    );
-  }
+  const stored = await chrome.storage.local.get({ apiConfig: null });
+  const apiConfig = stored.apiConfig && stored.apiConfig.apiKey ? stored.apiConfig : DEFAULT_API_CONFIG;
 
   const endpoint = apiConfig.endpoint.trim().replace(/\/$/, "");
   const res = await fetch(`${endpoint}/chat/completions`, {

@@ -53,9 +53,7 @@ service cloud.firestore {
 2. **Settings → Pages** → Source: nhánh `main`, thư mục `/ (root)` → Save.
 3. Sau 1-2 phút, mở `https://<username>.github.io/<repo>/index.html`.
 4. Đăng nhập bằng **đúng tài khoản đã tạo ở tiện ích Chrome** (dùng chung Firebase Auth).
-5. Vào **Cài đặt API** → nhập Endpoint / Model / API key của bạn → **Lưu cài đặt**.
-   - Đây là API test riêng của bạn (endpoint dạng OpenAI-compatible, ví dụ như trong `chatbot.html` gốc bạn gửi — file đó không có key thật, chỉ có ô trống, nên bạn cần tự nhập).
-   - Sau khi lưu, **mở lại popup của tiện ích Chrome một lần** (đăng nhập lại nếu cần) để tiện ích tự tải cấu hình này về máy — nút "✨ Viết lại theo SMART" trên extension cần cấu hình này để hoạt động.
+5. **[Không bắt buộc]** Vào **Cài đặt API** để xem/đổi Endpoint / Model / API key. Hệ thống đã dùng sẵn key test cố định của bạn (`api.shopaikey.com`, model `gpt-5.4-nano`) — không cần làm gì thêm là dùng được ngay ở cả Chatbot, Passport lẫn Extension. Chỉ cần vào trang này nếu sau này bạn muốn đổi sang key/endpoint khác.
 
 ---
 
@@ -86,6 +84,9 @@ service cloud.firestore {
 ---
 
 ## Giới hạn & lưu ý quan trọng
+
+- **Firebase SDK được đóng gói sẵn local** trong `extension-v3/lib/` (không tải từ CDN) vì Chrome Manifest V3 không cho phép khai báo CSP với script nguồn ngoài trong `content_security_policy.extension_pages`. Nếu bạn tự cập nhật phiên bản Firebase sau này, hãy tải lại 3 file `firebase-app-compat.js`, `firebase-auth-compat.js`, `firebase-firestore-compat.js` và bỏ vào đúng thư mục `lib/`.
+- **API key hiện đã nhúng cố định trong code** (`website/auth-web.js` và `extension-v3/background.js`) theo yêu cầu, để không cần cấu hình gì thêm. Vì `website/` sẽ deploy public lên GitHub Pages, **ai xem source code trang web (View Source / DevTools) cũng thấy được key này** — không chỉ riêng bạn. Bạn đã xác nhận đây là key test số dư nhỏ, không auto-nạp tiền nên chấp nhận rủi ro này; nếu sau này đổi ý, chỉ cần xoá giá trị nhúng sẵn ở 2 file trên và dùng lại trang **Cài đặt API** như cơ chế dự phòng (vẫn hoạt động song song, ưu tiên cấu hình người dùng tự lưu nếu có).
 
 - **Selector DOM có thể lỗi thời**: ChatGPT/Claude/Gemini đổi giao diện thường xuyên. Nếu panel SMART hoặc việc lưu log ngừng hoạt động trên 1 trang, mở file `content-<site>.js` tương ứng, F12 để tìm lại selector đúng và cập nhật danh sách `inputSelectors` / selector tin nhắn.
 - **`host_permissions: ["https://*/*"]`**: cần thiết vì endpoint API do bạn tự nhập (không cố định), nên extension cần quyền gọi mạng tới domain bất kỳ. Đây là quyền khá rộng — chỉ dùng cho tiện ích cài thủ công (Load unpacked) của riêng bạn, **không nên đăng lên Chrome Web Store** với quyền này nếu chưa thu hẹp lại theo đúng domain API bạn dùng.

@@ -34,8 +34,5 @@
   "action": {
     "default_popup": "popup.html",
     "default_title": "AI SMART"
-  },
-  "content_security_policy": {
-    "extension_pages": "script-src 'self' https://www.gstatic.com; object-src 'self'"
   }
 }
