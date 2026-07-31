@@ -98,7 +98,7 @@ function initSmartHint({ inputSelectors, getText, setText }) {
           background:#3b6cf6; color:#fff; font-size:12.5px; font-weight:700; cursor:pointer;">
           ✨ Viết lại câu hỏi theo SMART
         </button>
-        <div class="ai-smart-rewrite-status" style="font-size:10.5px; color:#667085; min-height:14px; margin-top:6px;"></div>
+        <div class="ai-smart-rewrite-status" style="font-size:10.5px; color:#667085; display:none;"></div>
       </div>
     `;
 
@@ -106,6 +106,18 @@ function initSmartHint({ inputSelectors, getText, setText }) {
     const collapseBtn = el.querySelector(".ai-smart-collapse-btn");
     const btn = el.querySelector(".ai-smart-rewrite-btn");
     const statusEl = el.querySelector(".ai-smart-rewrite-status");
+
+    function setStatus(text) {
+      if (text) {
+        statusEl.textContent = text;
+        statusEl.style.display = "block";
+        statusEl.style.marginTop = "6px";
+      } else {
+        statusEl.textContent = "";
+        statusEl.style.display = "none";
+        statusEl.style.marginTop = "0";
+      }
+    }
 
     // ---- Kéo thả ----
     handle.addEventListener("mousedown", (e) => {
@@ -141,21 +153,21 @@ function initSmartHint({ inputSelectors, getText, setText }) {
     btn.addEventListener("click", async () => {
       const text = getText(currentInput);
       if (!text || !text.trim()) {
-        statusEl.textContent = "Hãy gõ câu hỏi trước đã.";
+        setStatus("Hãy gõ câu hỏi trước đã.");
         return;
       }
       btn.disabled = true;
-      statusEl.textContent = "Đang viết lại...";
+      setStatus("Đang viết lại...");
       try {
         const res = await chrome.runtime.sendMessage({ type: "rewritePrompt", text });
         if (res?.error) {
-          statusEl.textContent = "Lỗi: " + res.error;
+          setStatus("Lỗi: " + res.error);
         } else {
           setText(currentInput, res.rewritten);
-          statusEl.textContent = "Đã viết lại. Bạn có thể chỉnh sửa thêm trước khi gửi.";
+          setStatus("Đã viết lại. Bạn có thể chỉnh sửa thêm trước khi gửi.");
         }
       } catch (e) {
-        statusEl.textContent = "Lỗi: " + e.message;
+        setStatus("Lỗi: " + e.message);
       } finally {
         btn.disabled = false;
       }

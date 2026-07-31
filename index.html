@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>AI SMART - Trang chủ</title>
+<title>AI SMART — Học cùng AI đúng cách</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -24,35 +25,32 @@
 </div>
 
 <div id="dashboard" style="display:none;">
-  <header class="topbar">
-    <div class="brand">AI SMART</div>
-    <nav class="nav-links">
-      <a href="chatbot.html">AI SMART Chatbot</a>
-      <a href="passport.html">AI Learning Passport</a>
-    </nav>
-    <div class="user-info">
-      <span id="userEmail"></span>
-      <button id="logoutBtn" class="ghost-btn">Đăng xuất</button>
-    </div>
-  </header>
+  <section class="hero">
+    <div class="hero-eyebrow"><i class="fa-solid fa-graduation-cap"></i> Phương pháp SMART · 5 bước</div>
+    <h1 class="hero-h1">Học đúng cách cùng <em>AI SMART</em></h1>
+    <p class="hero-sub">Nêu vấn đề → Xác định chỗ thiếu → Gợi ý hướng đi → Tự hoàn thành → Kiểm tra & Giải thích.</p>
+  </section>
 
   <main class="content">
     <div class="landing-grid">
       <a class="feature-card" href="chatbot.html">
-        <h2>🧭 AI SMART Chatbot</h2>
-        <p>Hỏi bài như bình thường, nhưng AI sẽ hướng dẫn theo 5 bước State → Missing → Assist → Resolve → Test thay vì đưa đáp án ngay.</p>
+        <div class="feat-icon"><i class="fa-solid fa-comments"></i></div>
+        <h2>AI SMART Chatbot</h2>
+        <p>Hỏi bài như bình thường, nhưng AI sẽ hướng dẫn theo 5 bước thay vì đưa đáp án ngay, giúp bạn thực sự hiểu bài.</p>
       </a>
       <a class="feature-card" href="passport.html">
-        <h2>📊 AI Learning Passport & ACI</h2>
-        <p>Xem lại toàn bộ lịch sử sử dụng AI của bạn, biểu đồ tiến bộ, và chỉ số AI Crutch Index (ACI) đánh giá mức độ phụ thuộc vào AI.</p>
+        <div class="feat-icon"><i class="fa-solid fa-route"></i></div>
+        <h2>AI Learning Passport</h2>
+        <p>Xem lại lịch sử sử dụng AI, biểu đồ tiến bộ, và chỉ số AI Crutch Index (ACI) đánh giá mức độ phụ thuộc vào AI.</p>
       </a>
     </div>
-    <p style="font-size:12px; color:var(--ink-soft); margin-top:18px;">
-      API đã được cấu hình sẵn — bạn có thể dùng ngay Chatbot và Passport mà không cần cài đặt gì thêm.
+    <p style="font-size:12.5px; color:var(--text-dim); margin-top:22px; text-align:center;">
+      API đã được cấu hình sẵn — dùng ngay không cần cài đặt gì thêm.
     </p>
   </main>
 </div>
 
+<script src="nav.js"></script>
 <script type="module">
   import { watchAuth, login, signup, logout, translateFirebaseError } from "./auth-web.js";
 
@@ -64,8 +62,8 @@
   const submitBtn = document.getElementById("submitBtn");
   const tabLogin = document.getElementById("tabLogin");
   const tabSignup = document.getElementById("tabSignup");
-  const userEmailEl = document.getElementById("userEmail");
-  const logoutBtn = document.getElementById("logoutBtn");
+
+  const nav = renderSiteNav("home");
 
   let mode = "login";
   function setMode(m) {
@@ -94,17 +92,16 @@
     }
   };
 
-  logoutBtn.onclick = () => logout();
-
   watchAuth(
     (user) => {
       authScreen.style.display = "none";
       dashboard.style.display = "block";
-      userEmailEl.textContent = user.email;
+      nav.setUser(user.email, () => logout());
     },
     () => {
       authScreen.style.display = "flex";
       dashboard.style.display = "none";
+      nav.setUser(null);
     }
   );
 </script>

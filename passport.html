@@ -4,32 +4,33 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>AI Learning Passport & ACI</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link rel="stylesheet" href="style.css" />
 <style>
-  .loading-screen{ min-height: calc(100vh - 61px); display:flex; flex-direction:column;
+  .loading-screen{ min-height: calc(100vh - 72px); display:flex; flex-direction:column;
     align-items:center; justify-content:center; gap:14px; }
-  .spinner{ width:34px; height:34px; border:3px solid var(--line); border-top-color:var(--blue);
+  .spinner{ width:36px; height:36px; border:3px solid var(--border); border-top-color:var(--orange);
     border-radius:50%; animation:spin 0.9s linear infinite; }
   @keyframes spin{ to{ transform:rotate(360deg); } }
-  .loading-text{ font-size:13px; color:var(--ink-soft); }
+  .loading-text{ font-size:13px; color:var(--text-mid); }
 
-  .stat-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:18px; }
-  .stat-card{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px 18px; box-shadow:0 2px 10px rgba(30,36,51,0.03); }
-  .stat-card .num{ font-size:26px; font-weight:800; color:var(--blue); }
-  .stat-card .label{ font-size:11.5px; color:var(--ink-soft); margin-top:4px; }
+  .stat-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
+  .stat-card{ background:var(--card-bg); border:1px solid var(--border); border-radius:20px; padding:18px 20px; }
+  .stat-card .num{ font-family:'Fraunces',serif; font-size:28px; font-weight:600; color:var(--orange2); }
+  .stat-card .label{ font-size:11.5px; color:var(--text-mid); margin-top:4px; }
 
-  .chart-row{ display:grid; grid-template-columns:1.4fr 1fr; gap:16px; margin-bottom:18px; }
+  .chart-row{ display:grid; grid-template-columns:1.4fr 1fr; gap:18px; margin-bottom:20px; }
   canvas{ max-width:100%; }
 
   table{ width:100%; border-collapse:collapse; font-size:12.5px; }
-  th,td{ text-align:left; padding:9px 8px; border-bottom:1px solid var(--line); }
-  th{ font-size:11px; color:var(--ink-soft); font-weight:700; }
-  .pill{ font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; color:#fff; }
+  th,td{ text-align:left; padding:10px 8px; border-bottom:1px solid var(--border); }
+  th{ font-size:11px; color:var(--text-mid); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; }
+  .pill{ font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px; color:#fff; }
   .pill.low{ background:var(--green); }
-  .pill.mid{ background:var(--orange); }
+  .pill.mid{ background:var(--gold); }
   .pill.high{ background:var(--red); }
 
-  @media (max-width:700px){
+  @media (max-width:800px){
     .stat-grid{ grid-template-columns:repeat(2,1fr); }
     .chart-row{ grid-template-columns:1fr; }
   }
@@ -40,26 +41,14 @@
 <div id="guard" class="auth-screen"><p>Đang kiểm tra đăng nhập...</p></div>
 
 <div id="page" style="display:none;">
-  <header class="topbar">
-    <div class="brand">AI SMART</div>
-    <nav class="nav-links">
-      <a href="index.html">Trang chủ</a>
-      <a href="chatbot.html">Chatbot</a>
-      <a href="passport.html" class="active">Passport</a>
-    </nav>
-    <div class="user-info">
-      <span id="userEmail"></span>
-      <button id="logoutBtn" class="ghost-btn">Đăng xuất</button>
-    </div>
-  </header>
-
-  <div id="loadingScreen" class="loading-screen">
+  <div class="loading-screen" id="loadingScreen">
     <div class="spinner"></div>
     <div id="loadingText" class="loading-text">Đang tải dữ liệu...</div>
   </div>
 
   <main id="dashboardContent" class="content" style="display:none;">
-    <h2 class="section-title">AI Learning Passport</h2>
+    <div class="section-label"><i class="fa-solid fa-route"></i> AI Learning Passport</div>
+    <h2 class="section-title">Thống kê sử dụng AI của bạn</h2>
 
     <div class="stat-grid">
       <div class="stat-card"><div id="statAci" class="num">-</div><div class="label">ACI trung bình</div></div>
@@ -70,17 +59,17 @@
 
     <div class="chart-row">
       <div class="card">
-        <h3 class="section-title" style="font-size:13px;">Xu hướng ACI theo thời gian</h3>
+        <h3 class="section-title" style="font-size:15px;">Xu hướng ACI theo thời gian</h3>
         <canvas id="aciTrendChart" height="160"></canvas>
       </div>
       <div class="card">
-        <h3 class="section-title" style="font-size:13px;">Phân bố theo môn học</h3>
+        <h3 class="section-title" style="font-size:15px;">Phân bố theo môn học</h3>
         <canvas id="subjectChart" height="160"></canvas>
       </div>
     </div>
 
     <div class="card">
-      <h3 class="section-title" style="font-size:13px;">Lịch sử chi tiết</h3>
+      <h3 class="section-title" style="font-size:15px;">Lịch sử chi tiết</h3>
       <table>
         <thead>
           <tr><th>Thời gian</th><th>Nền tảng</th><th>Câu hỏi</th><th>ACI</th><th>Rủi ro ỷ lại</th></tr>
@@ -91,9 +80,10 @@
   </main>
 </div>
 
+<script src="nav.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script type="module">
-import { watchAuth, getApiConfig } from "./auth-web.js";
+import { watchAuth, getApiConfig, logout } from "./auth-web.js";
 import { db } from "./firebase-config.js";
 import {
   collection, query, where, getDocs, doc, updateDoc,
@@ -102,26 +92,21 @@ import { analyzePromptsBatch, subjectCodeToLabel } from "./smart-shared.js";
 
 const guard = document.getElementById("guard");
 const page = document.getElementById("page");
-const userEmailEl = document.getElementById("userEmail");
-const logoutBtn = document.getElementById("logoutBtn");
 const loadingScreen = document.getElementById("loadingScreen");
 const loadingText = document.getElementById("loadingText");
 const dashboardContent = document.getElementById("dashboardContent");
+
+const nav = renderSiteNav("passport");
 
 watchAuth(
   async (user) => {
     guard.style.display = "none";
     page.style.display = "block";
-    userEmailEl.textContent = user.email;
+    nav.setUser(user.email, () => logout());
     await runPipeline(user.uid);
   },
   () => { window.location.href = "index.html"; }
 );
-
-document.getElementById("logoutBtn").onclick = async () => {
-  const { logout } = await import("./auth-web.js");
-  logout();
-};
 
 async function runPipeline(uid) {
   try {
@@ -131,13 +116,12 @@ async function runPipeline(uid) {
     loadingText.textContent = "Đang tải lịch sử sử dụng AI...";
     const entriesCol = collection(db, "users", uid, "entries");
 
-    // 1. Lấy các prompt CHƯA được phân tích
     const unanalyzedSnap = await getDocs(query(entriesCol, where("analyzed", "==", false)));
     const unanalyzed = unanalyzedSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
     if (unanalyzed.length > 0) {
       if (!apiConfig.apiKey) {
-        loadingText.textContent = `Có ${unanalyzed.length} câu hỏi chưa phân tích nhưng chưa có API key. Vào 'Cài đặt API' để thêm.`;
+        loadingText.textContent = `Có ${unanalyzed.length} câu hỏi chưa phân tích nhưng chưa có API key.`;
       } else {
         loadingText.textContent = `Đang phân tích ${unanalyzed.length} câu hỏi mới bằng AI...`;
         const texts = unanalyzed.map((e) => e.text || "");
@@ -159,7 +143,6 @@ async function runPipeline(uid) {
       }
     }
 
-    // 2. Lấy TOÀN BỘ entries đã phân tích để dựng dashboard
     loadingText.textContent = "Đang tổng hợp thống kê...";
     const allSnap = await getDocs(query(entriesCol, where("analyzed", "==", true)));
     const allEntries = allSnap.docs
@@ -198,7 +181,6 @@ function renderDashboard(entries) {
   document.getElementById("statComplexity").textContent = avg("complexity");
   document.getElementById("statTotal").textContent = total;
 
-  // ---- Chart: xu hướng ACI theo thời gian ----
   const trendLabels = withAnalysis.map((e) => formatTime(e.time));
   const trendData = withAnalysis.map((e) => e.analysis.aci);
   new Chart(document.getElementById("aciTrendChart"), {
@@ -208,20 +190,16 @@ function renderDashboard(entries) {
       datasets: [{
         label: "AI Crutch Index",
         data: trendData,
-        borderColor: "#3b6cf6",
-        backgroundColor: "rgba(59,108,246,0.12)",
+        borderColor: "#e67e22",
+        backgroundColor: "rgba(230,126,34,0.12)",
         tension: 0.25,
         fill: true,
         pointRadius: 2,
       }],
     },
-    options: {
-      scales: { y: { min: 0, max: 100 } },
-      plugins: { legend: { display: false } },
-    },
+    options: { scales: { y: { min: 0, max: 100 } }, plugins: { legend: { display: false } } },
   });
 
-  // ---- Chart: phân bố theo môn học ----
   const subjectCounts = {};
   withAnalysis.forEach((e) => {
     const label = subjectCodeToLabel(e.analysis.subjectCode);
@@ -233,13 +211,12 @@ function renderDashboard(entries) {
       labels: Object.keys(subjectCounts),
       datasets: [{
         data: Object.values(subjectCounts),
-        backgroundColor: ["#3b6cf6", "#ff8a3d", "#ef4444", "#17a673", "#a78bfa", "#9aa3b2"],
+        backgroundColor: ["#e67e22", "#f39c12", "#e74c3c", "#1f9d6c", "#9b7fd4", "#95a5a6"],
       }],
     },
     options: { plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 10 } } } } },
   });
 
-  // ---- Bảng lịch sử ----
   const tbody = document.getElementById("historyBody");
   tbody.innerHTML = "";
   withAnalysis.slice().reverse().slice(0, 100).forEach((e) => {
