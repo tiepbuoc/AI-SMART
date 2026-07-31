@@ -1,20 +1,13 @@
 // auth-web.js
-// Xử lý đăng nhập/đăng ký dùng chung cho mọi trang trong website,
-// và đọc/ghi cài đặt API (endpoint/model/apiKey) theo từng tài khoản tại
-// users/{uid}/settings/apiConfig
+// Xử lý đăng nhập/đăng ký dùng chung cho mọi trang trong website.
 
-import { auth, db } from "./firebase-config.js";
+import { auth } from "./firebase-config.js";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import {
-  doc,
-  getDoc,
-  setDoc,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 export function translateFirebaseError(err) {
   const code = err && err.code;
@@ -49,23 +42,13 @@ export function watchAuth(onLogin, onLogout) {
   });
 }
 
-// ---- Cài đặt API (endpoint / model / apiKey) ----
-// Mặc định dùng luôn API test cố định của bạn (theo yêu cầu), không bắt buộc
-// phải vào trang Cài đặt mới dùng được. Nếu Firestore có lưu cấu hình khác
-// (đã từng bấm "Lưu cài đặt"), cấu hình đó sẽ được ưu tiên dùng thay thế.
-const DEFAULT_API_CONFIG = {
+// ---- Cấu hình API cố định (theo yêu cầu, không cần trang Cài đặt nữa) ----
+const FIXED_API_CONFIG = {
   endpoint: "https://api.shopaikey.com/v1",
   model: "gpt-5.4-nano",
   apiKey: "sk-4150297863e3eee405805e8609648e6c5cebb1b502ffb46e",
 };
 
-export async function getApiConfig(uid) {
-  const ref = doc(db, "users", uid, "settings", "apiConfig");
-  const snap = await getDoc(ref);
-  return snap.exists() ? { ...DEFAULT_API_CONFIG, ...snap.data() } : DEFAULT_API_CONFIG;
-}
-
-export async function saveApiConfig(uid, config) {
-  const ref = doc(db, "users", uid, "settings", "apiConfig");
-  await setDoc(ref, config, { merge: true });
+export async function getApiConfig() {
+  return FIXED_API_CONFIG;
 }

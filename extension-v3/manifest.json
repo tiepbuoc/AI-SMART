@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "AI SMART - Trợ lý học tập & Nhật ký AI",
-  "version": "2.0.0",
-  "description": "Gợi ý viết câu hỏi theo khung SMART, lưu lịch sử câu hỏi trên ChatGPT/Claude/Gemini và đồng bộ (khi đồng ý) cho AI Learning Passport.",
-  "permissions": ["storage"],
+  "version": "2.1.0",
+  "description": "Gợi ý viết câu hỏi theo khung SMART, lưu lịch sử câu hỏi trên ChatGPT/Claude/Gemini và tự động đồng bộ (sau khi đăng nhập 1 lần) cho AI Learning Passport.",
+  "permissions": ["storage", "alarms", "tabs"],
   "host_permissions": [
     "https://chatgpt.com/*",
     "https://chat.openai.com/*",
@@ -12,7 +12,8 @@
     "https://*/*"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "content_scripts": [
     {

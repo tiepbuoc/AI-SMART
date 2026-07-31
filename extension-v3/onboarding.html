@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<title>Kết nối tài khoản — AI SMART</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Inter:wght@400;500;600;700&display=swap');
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f8fc; --ink:#1e2433; --ink-soft:#667085;
+    --line:#e7eaf3; --blue:#3b6cf6; --blue-soft:#eaf0ff; --green:#17a673; --red:#ef4444;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:
+      radial-gradient(circle at 20% 15%, rgba(59,108,246,0.08), transparent 40%),
+      radial-gradient(circle at 85% 85%, rgba(255,138,61,0.08), transparent 40%),
+      var(--bg);
+    font-family:'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color:var(--ink);
+  }
+  .card{
+    width:100%; max-width:420px; background:#fff; border:1px solid var(--line);
+    border-radius:22px; padding:36px 34px; box-shadow:0 16px 40px rgba(30,36,51,0.08);
+  }
+  h1{ font-family:'Baloo 2',sans-serif; font-size:26px; margin:0 0 6px; color:var(--blue); }
+  .subtitle{ font-size:13.5px; color:var(--ink-soft); line-height:1.6; margin:0 0 22px; }
+  .consent-box{
+    background:var(--blue-soft); border-radius:14px; padding:12px 14px; font-size:12.5px;
+    color:var(--ink); line-height:1.55; margin-bottom:20px;
+  }
+  .tabs{ display:flex; background:var(--bg-soft); border-radius:999px; padding:4px; margin-bottom:16px; }
+  .tab{ flex:1; padding:8px 0; border:none; background:transparent; border-radius:999px;
+    font-size:13px; font-weight:600; color:var(--ink-soft); cursor:pointer; }
+  .tab.active{ background:var(--blue); color:#fff; }
+  input{
+    width:100%; padding:11px 14px; margin-bottom:10px; border:1.5px solid var(--line);
+    border-radius:12px; font-size:14px; background:var(--bg-soft);
+  }
+  input:focus{ outline:none; border-color:var(--blue); background:#fff; }
+  button.primary{
+    width:100%; padding:12px 0; border:none; border-radius:12px; background:var(--blue);
+    color:#fff; font-size:14px; font-weight:700; cursor:pointer;
+  }
+  button.primary:hover{ background:#2c58d6; }
+  button.primary:disabled{ opacity:.6; cursor:not-allowed; }
+  .msg{ margin-top:10px; font-size:12.5px; min-height:16px; color:var(--red); }
+  .success-screen{ display:none; text-align:center; }
+  .success-screen .check{ font-size:44px; margin-bottom:10px; }
+  .success-screen h2{ font-family:'Baloo 2',sans-serif; color:var(--green); margin:0 0 8px; }
+  .success-screen p{ font-size:13.5px; color:var(--ink-soft); line-height:1.6; }
+  .close-btn{
+    margin-top:16px; padding:10px 18px; border-radius:12px; border:1.5px solid var(--line);
+    background:#fff; cursor:pointer; font-size:13px; font-weight:600; color:var(--ink);
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div id="formScreen">
+    <h1>🧭 AI SMART</h1>
+    <p class="subtitle">Kết nối tài khoản để dùng gợi ý viết câu hỏi theo khung SMART và xem lại thống kê ở AI Learning Passport.</p>
+
+    <div class="consent-box">
+      ✅ Khi đăng nhập/đăng ký, bạn đồng ý cho tiện ích <strong>tự động đồng bộ liên tục</strong> lịch sử câu hỏi bạn hỏi AI (ChatGPT, Claude, Gemini) về tài khoản này, phục vụ tính AI Crutch Index (ACI) ở AI Learning Passport. Bạn có thể tắt đồng bộ bất cứ lúc nào trong popup của tiện ích.
+    </div>
+
+    <div class="tabs">
+      <button id="tabLogin" class="tab active">Đăng nhập</button>
+      <button id="tabSignup" class="tab">Đăng ký</button>
+    </div>
+
+    <input id="email" type="email" placeholder="Email" autocomplete="username" />
+    <input id="password" type="password" placeholder="Mật khẩu" autocomplete="current-password" />
+    <button id="submitBtn" class="primary">Đăng nhập & Đồng ý đồng bộ</button>
+    <div id="msg" class="msg"></div>
+  </div>
+
+  <div id="successScreen" class="success-screen">
+    <div class="check">🎉</div>
+    <h2>Đã kết nối!</h2>
+    <p>Tiện ích sẽ tự động đồng bộ liên tục dữ liệu từ giờ. Bạn có thể đóng tab này và bắt đầu dùng ChatGPT / Claude / Gemini như bình thường.</p>
+    <button class="close-btn" id="closeBtn">Đóng tab này</button>
+  </div>
+</div>
+
+<script src="lib/firebase-app-compat.js"></script>
+<script src="lib/firebase-auth-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="onboarding.js"></script>
+</body>
+</html>

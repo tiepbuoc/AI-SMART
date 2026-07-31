@@ -1,9 +1,34 @@
-# AI SMART — Hướng dẫn tổng hợp
+# AI SMART — Hướng dẫn tổng hợp (bản cập nhật)
 
 Dự án gồm 2 phần, dùng chung 1 project Firebase (`cdmtdc`):
 
-1. **`website/`** — deploy lên GitHub Pages: Trang chủ, AI SMART Chatbot, AI Learning Passport & ACI, Cài đặt API.
-2. **`extension-v3/`** — Tiện ích Chrome: gợi ý SMART ngay trên ô nhập của ChatGPT/Claude/Gemini, lưu lịch sử, đồng bộ (khi đồng ý) lên cùng tài khoản Firebase.
+1. **`website/`** — deploy lên GitHub Pages: Trang chủ, AI SMART Chatbot, AI Learning Passport & ACI.
+2. **`extension-v3/`** — Tiện ích Chrome: gợi ý SMART ngay trên ô nhập của ChatGPT/Claude/Gemini, tự động mở tab đăng nhập khi cài, và tự động đồng bộ liên tục sau đó.
+
+---
+
+## Những gì đã thay đổi ở bản này
+
+1. **Giao diện mới**: theme sáng/trắng, tươi tắn, đồng bộ giữa web và extension (font Baloo 2 + Inter, tông xanh dương `#3b6cf6` làm chủ đạo).
+2. **Tự động mở tab đăng nhập khi cài tiện ích**: chỉ cần đăng nhập/đăng ký **1 lần duy nhất** ở tab này — hệ thống tự bật đồng bộ liên tục từ đó, không cần mở popup mỗi lần.
+3. **Bỏ hẳn trang "Cài đặt API"** trên web — API key giờ cố định trong code.
+4. **Rubric chấm ACI cố định** — có bảng mốc chấm điểm rõ ràng theo từng khoảng điểm, dùng lặp lại y hệt mỗi lần gọi AI để đảm bảo nhất quán giữa các lần phân tích.
+5. **Chatbot web xử lý Markdown + LaTeX**: `**in đậm**`, `### tiêu đề`, `---`, danh sách, code, và công thức Toán/Lý/Hóa viết bằng LaTeX (`$...$`, `$$...$$`) đều hiển thị đẹp.
+6. **5 bước SMART hiển thị bằng tiếng Việt**: Nêu vấn đề → Xác định chỗ thiếu → Gợi ý hướng đi → Tự hoàn thành → Kiểm tra & Giải thích.
+7. **Panel gợi ý SMART trên trang AI** (không phải popup toolbar — xem lưu ý bên dưới) giờ **kéo thả di chuyển được** và có **nút thu nhỏ thành bong bóng tròn nổi**, bấm vào bong bóng để mở lại panel.
+
+> ⚠️ Lưu ý kỹ thuật: **popup của tiện ích (cửa sổ hiện ra khi bấm icon trên thanh công cụ Chrome)** do chính Chrome kiểm soát vị trí — không thể kéo thả hay thu nhỏ được, đây là giới hạn của trình duyệt chứ không phải do code. Tính năng kéo thả/thu nhỏ ở mục 7 áp dụng cho **panel SMART nổi trên chatgpt.com/claude.ai/gemini.google.com**, do chính extension tự vẽ ra nên điều khiển được hoàn toàn.
+
+---
+
+## Kiến trúc đồng bộ dữ liệu (mới)
+
+Trước đây việc đồng bộ chỉ chạy khi mở popup. Giờ:
+
+- **`onboarding.html`** (tự mở khi cài tiện ích): người dùng đăng nhập/đăng ký 1 lần → lấy `idToken` + `refreshToken` từ Firebase Auth → lưu vào `chrome.storage.local` → tự bật `syncConsent = true`.
+- **`background.js`** (service worker, chạy nền vĩnh viễn dù không mở popup): dùng `idToken`/`refreshToken` đó gọi thẳng **Firestore REST API** (không dùng Firebase SDK, vì SDK cần đối tượng `window` mà service worker không có) để ghi các câu hỏi mới lên `users/{uid}/entries`. `idToken` tự làm mới bằng `refreshToken` khi gần hết hạn.
+- Đồng bộ chạy theo 2 cơ chế song song: **ngay khi có dữ liệu mới** (lắng nghe `chrome.storage.onChanged`) và **định kỳ mỗi 2 phút** (dự phòng qua `chrome.alarms`, phòng khi mạng lỗi ở lần đầu).
+- Popup giờ chỉ là nơi xem lại lịch sử cục bộ + bật/tắt đồng bộ + nút "Ngắt kết nối" — không còn chứa form đăng nhập (đăng nhập chỉ làm ở `onboarding.html`, có thể mở lại bằng nút "Kết nối tài khoản" trong popup nếu đã ngắt kết nối).
 
 ---
 
@@ -13,18 +38,16 @@ Vào https://console.firebase.google.com/ → project **cdmtdc**:
 
 ### 0.1. Authentication
 - **Authentication → Sign-in method** → bật **Email/Password**.
-- **Authentication → Settings → Authorized domains** → thêm domain GitHub Pages của bạn (ví dụ `<username>.github.io`) sau khi deploy xong ở Bước 2.
+- **Authentication → Settings → Authorized domains** → thêm domain GitHub Pages của bạn (ví dụ `<username>.github.io`) sau khi deploy ở Bước 2.
 
 ### 0.2. Firestore Database
 - **Firestore Database → Create database** (chế độ Production).
-- Vào tab **Rules**, dán:
+- Tab **Rules**, dán:
 
 ```
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Cho phép mỗi user đọc/ghi TOÀN BỘ dữ liệu con của chính mình
-    // (bao gồm cả entries/ và settings/apiConfig)
     match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
@@ -32,18 +55,16 @@ service cloud.firestore {
 }
 ```
 
-- Bấm **Publish**.
-
-> ⚠️ Rules này quan trọng: nếu thiếu, dữ liệu của bạn hoặc bị chặn hoàn toàn, hoặc (nếu bạn để rules mở) bất kỳ ai cũng đọc được — vì cấu hình Firebase (`apiKey`, `projectId`...) vốn là thông tin public trong mọi app Firebase, thứ bảo vệ dữ liệu thực sự là Rules này.
+- **Publish**.
 
 ---
 
 ## BƯỚC 1 — Cài tiện ích Chrome (`extension-v3`)
 
-1. `chrome://extensions` → bật **Developer mode** → **Load unpacked** → chọn thư mục `extension-v3`.
-2. Mở icon tiện ích → **Đăng ký** 1 tài khoản (email + mật khẩu ≥ 6 ký tự) — tài khoản này dùng chung với website.
-3. Vào chatgpt.com / claude.ai / gemini.google.com — bạn sẽ thấy 1 panel nhỏ nổi cạnh ô nhập gồm 5 bước SMART và nút **"✨ Viết lại câu hỏi theo SMART"**.
-4. Trong popup tiện ích, có ô **"Đồng ý đồng bộ dữ liệu hành vi lên AI Learning Passport"** — chỉ khi bạn tick ô này, lịch sử câu hỏi mới được gửi lên Firebase để website tính ACI. Nếu không tick, dữ liệu chỉ lưu cục bộ trên máy.
+1. `chrome://extensions` → **Developer mode** → **Load unpacked** → chọn thư mục `extension-v3`.
+2. Ngay khi cài xong, **1 tab mới sẽ tự mở** yêu cầu đăng nhập/đăng ký — chỉ cần làm **1 lần**, hệ thống tự bật đồng bộ liên tục từ đó.
+3. Vào chatgpt.com / claude.ai / gemini.google.com — sẽ thấy panel nhỏ nổi cạnh ô nhập với 5 bước SMART (tiếng Việt) và nút "✨ Viết lại câu hỏi theo SMART". Panel có thể **kéo bằng thanh xanh phía trên** để di chuyển, hoặc bấm nút "–" để **thu nhỏ thành bong bóng tròn** (bấm lại vào bong bóng để mở ra).
+4. Mở popup của tiện ích bất cứ lúc nào để xem lịch sử, tắt/bật đồng bộ, hoặc "Ngắt kết nối" tài khoản.
 
 ---
 
@@ -51,44 +72,32 @@ service cloud.firestore {
 
 1. Tạo repo GitHub mới, đẩy toàn bộ nội dung thư mục `website/` lên nhánh `main`.
 2. **Settings → Pages** → Source: nhánh `main`, thư mục `/ (root)` → Save.
-3. Sau 1-2 phút, mở `https://<username>.github.io/<repo>/index.html`.
-4. Đăng nhập bằng **đúng tài khoản đã tạo ở tiện ích Chrome** (dùng chung Firebase Auth).
-5. **[Không bắt buộc]** Vào **Cài đặt API** để xem/đổi Endpoint / Model / API key. Hệ thống đã dùng sẵn key test cố định của bạn (`api.shopaikey.com`, model `gpt-5.4-nano`) — không cần làm gì thêm là dùng được ngay ở cả Chatbot, Passport lẫn Extension. Chỉ cần vào trang này nếu sau này bạn muốn đổi sang key/endpoint khác.
+3. Mở `https://<username>.github.io/<repo>/index.html`, đăng nhập bằng **đúng tài khoản đã tạo ở Bước 1** (dùng chung Firebase Auth) — không cần cấu hình API gì thêm, key đã cố định sẵn.
 
 ---
 
 ## Cách hoạt động của từng phần
 
-### 1. AI SMART Chatbot (`website/chatbot.html`)
-- Áp dụng system prompt bắt AI đi theo 5 bước **State → Missing → Assist → Resolve → Test**: không đưa đáp án cuối cùng cho tới khi học sinh tự thử.
-- Mỗi lượt hỏi/đáp được lưu vào `users/{uid}/entries/{id}` với `analyzed: false`.
+### AI SMART Chatbot (`website/chatbot.html`)
+- 5 bước bắt buộc: **Nêu vấn đề → Xác định chỗ thiếu → Gợi ý hướng đi → Tự hoàn thành → Kiểm tra & Giải thích**, không đưa đáp án cuối cùng cho tới khi học sinh tự thử.
+- Trả lời được render Markdown (đậm, tiêu đề, danh sách, code) và LaTeX (công thức Toán/Lý/Hóa) bằng `marked` + `KaTeX`, đã lọc qua `DOMPurify` để an toàn.
+- Mỗi lượt hỏi/đáp lưu vào `users/{uid}/entries/{id}` với `analyzed: false`.
 
-### 2. AI Learning Passport & ACI (`website/passport.html`)
-- Khi mở trang: hiện màn hình loading → tìm các entry có `analyzed == false` → gộp lại gửi **1 lần** cho AI, yêu cầu trả về JSON dạng mảng số theo đúng thứ tự:
+### AI Learning Passport & ACI (`website/passport.html`)
+- Gộp các prompt chưa phân tích, gửi AI chấm theo **rubric cố định 5 khoảng điểm** (xem chi tiết trong `website/smart-shared.js`, biến `ACI_RUBRIC`) để đảm bảo mọi lần chấm — dù cách nhau bao lâu — đều theo cùng 1 mốc chuẩn.
+- Kết quả lưu lại vào entry (`analysis`, `analyzed: true`) → không phân tích lại, tiết kiệm API.
+- Dashboard: ACI trung bình, xu hướng theo thời gian, phân bố theo môn học, bảng lịch sử chi tiết.
 
-  `[aci, complexity, effort, subjectCode, riskScore]` — mỗi số 0-100 (riêng `subjectCode` là 0-5: Toán/Lý/Hóa/Văn/Anh/Khác).
-
-- Kết quả được ghi lại vào từng entry (`analysis: {...}`, `analyzed: true`) → **lần sau các prompt này không bị phân tích lại**, tiết kiệm API key.
-- Dashboard hiển thị: ACI trung bình, biểu đồ xu hướng ACI theo thời gian, phân bố theo môn học, và bảng lịch sử chi tiết.
-- Schema 5 số này định nghĩa trong `website/smart-shared.js` — nếu muốn đổi ý nghĩa/số lượng chỉ số, sửa ở đúng 1 chỗ đó (cả prompt gửi AI lẫn phần đọc kết quả).
-
-### 3. Extension — panel SMART & viết lại câu hỏi
-- `smart-hint.js` chèn panel nổi cạnh ô nhập của ChatGPT/Claude/Gemini.
-- Khi bấm "Viết lại theo SMART", extension gửi câu hỏi hiện tại cho `background.js`, nơi này gọi API (dùng cấu hình đã đồng bộ từ Firestore) để viết lại theo khung SMART, rồi điền lại vào ô nhập — bạn vẫn có thể chỉnh sửa trước khi gửi.
-- Việc này **không tự động gửi** câu hỏi thay bạn — chỉ hỗ trợ viết lại.
-
-### 4. Đồng bộ dữ liệu hành vi
-- Content script luôn lưu câu hỏi cục bộ (`chrome.storage.local`) để hiển thị trong popup.
-- Chỉ khi bạn tick ô đồng ý trong popup, dữ liệu mới được đẩy lên Firestore (`users/{uid}/entries`) để website Passport tính ACI.
+### Extension — panel SMART & đồng bộ nền
+- `smart-hint.js`: panel kéo thả + thu nhỏ, nút viết lại câu hỏi theo khung SMART (gọi qua `background.js` để tránh vướng CSP của trang đích).
+- `background.js`: đồng bộ liên tục lên Firestore bằng REST API (không cần mở popup), dùng token lấy từ `onboarding.html`.
 
 ---
 
 ## Giới hạn & lưu ý quan trọng
 
-- **Firebase SDK được đóng gói sẵn local** trong `extension-v3/lib/` (không tải từ CDN) vì Chrome Manifest V3 không cho phép khai báo CSP với script nguồn ngoài trong `content_security_policy.extension_pages`. Nếu bạn tự cập nhật phiên bản Firebase sau này, hãy tải lại 3 file `firebase-app-compat.js`, `firebase-auth-compat.js`, `firebase-firestore-compat.js` và bỏ vào đúng thư mục `lib/`.
-- **API key hiện đã nhúng cố định trong code** (`website/auth-web.js` và `extension-v3/background.js`) theo yêu cầu, để không cần cấu hình gì thêm. Vì `website/` sẽ deploy public lên GitHub Pages, **ai xem source code trang web (View Source / DevTools) cũng thấy được key này** — không chỉ riêng bạn. Bạn đã xác nhận đây là key test số dư nhỏ, không auto-nạp tiền nên chấp nhận rủi ro này; nếu sau này đổi ý, chỉ cần xoá giá trị nhúng sẵn ở 2 file trên và dùng lại trang **Cài đặt API** như cơ chế dự phòng (vẫn hoạt động song song, ưu tiên cấu hình người dùng tự lưu nếu có).
-
-- **Selector DOM có thể lỗi thời**: ChatGPT/Claude/Gemini đổi giao diện thường xuyên. Nếu panel SMART hoặc việc lưu log ngừng hoạt động trên 1 trang, mở file `content-<site>.js` tương ứng, F12 để tìm lại selector đúng và cập nhật danh sách `inputSelectors` / selector tin nhắn.
-- **`host_permissions: ["https://*/*"]`**: cần thiết vì endpoint API do bạn tự nhập (không cố định), nên extension cần quyền gọi mạng tới domain bất kỳ. Đây là quyền khá rộng — chỉ dùng cho tiện ích cài thủ công (Load unpacked) của riêng bạn, **không nên đăng lên Chrome Web Store** với quyền này nếu chưa thu hẹp lại theo đúng domain API bạn dùng.
-- **API key**: được lưu trong Firestore (client-side) để dùng lại giữa web và extension — không phải là cơ chế bảo mật tuyệt đối, chỉ nên dùng với API test/nội bộ như bạn mô tả, không dùng chung với hệ thống quan trọng khác.
-- **Chi phí API**: mỗi lần vào trang Passport, hệ thống chỉ gọi API cho các prompt CHƯA phân tích (nhờ cờ `analyzed`), và gộp nhiều prompt vào 1 lần gọi để tiết kiệm.
+- **Selector DOM có thể lỗi thời**: ChatGPT/Claude/Gemini đổi giao diện thường xuyên. Nếu panel SMART hoặc log ngừng hoạt động ở 1 trang, mở `content-<site>.js` để cập nhật lại selector.
+- **`host_permissions: ["https://*/*"]`**: cần thiết vì endpoint API và Firestore REST đều được gọi từ `background.js` tới domain khác nhau. Quyền này khá rộng — chỉ phù hợp dùng riêng (Load unpacked), không nên đăng public lên Chrome Web Store nếu chưa thu hẹp lại.
+- **Firebase SDK compat được bundle local** trong `extension-v3/lib/` (chỉ dùng cho `onboarding.html`) — Manifest V3 không cho phép tải SDK từ CDN trong extension pages.
+- **API key cố định trong code** (`website/auth-web.js`, `extension-v3/background.js`) — vì `website/` deploy public trên GitHub Pages, ai xem source cũng thấy key này. Bạn đã xác nhận đây là key test rủi ro thấp nên chấp nhận việc này.
+- **Refresh token lưu trong `chrome.storage.local`**: đây là cơ chế thay thế cho việc chạy Firebase SDK trong service worker. Nếu người dùng đổi mật khẩu Firebase Auth, cần "Ngắt kết nối" rồi kết nối lại qua popup để lấy token mới.

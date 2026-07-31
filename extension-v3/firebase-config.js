@@ -1,6 +1,5 @@
-// firebase-config.js
-// Cấu hình Firebase project của bạn.
-// File này được nạp SAU các script firebase-*-compat.js và TRƯỚC auth.js / popup.js
+// firebase-config.js — dùng cho onboarding.html (đăng nhập lần đầu).
+// Dùng SDK compat đã bundle local trong lib/ (không tải từ CDN, tránh lỗi CSP của Manifest V3).
 
 const firebaseConfig = {
   apiKey: "AIzaSyBIJ_YqEVvDiqylaCiFu32ViE4RO9YSAZw",
@@ -13,6 +12,4 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
-
 const auth = firebase.auth();
-const db = firebase.firestore();
