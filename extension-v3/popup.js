@@ -1,5 +1,46 @@
 // popup.js
 
+// ---------- Kéo thả để đổi kích thước popup ----------
+(function initResize() {
+  const handle = document.getElementById("resizeHandle");
+  let resizing = false;
+  let startX = 0;
+  let startWidth = 0;
+
+  chrome.storage.local.get({ popupWidth: 400 }, (data) => {
+    applyWidth(data.popupWidth);
+  });
+
+  function applyWidth(w) {
+    const clamped = Math.min(640, Math.max(320, w));
+    document.documentElement.style.width = clamped + "px";
+    document.body.style.width = clamped + "px";
+  }
+
+  handle.addEventListener("mousedown", (e) => {
+    resizing = true;
+    startX = e.clientX;
+    startWidth = document.body.offsetWidth;
+    handle.classList.add("active");
+    document.body.style.userSelect = "none";
+    e.preventDefault();
+  });
+
+  window.addEventListener("mousemove", (e) => {
+    if (!resizing) return;
+    const newWidth = startWidth + (e.clientX - startX);
+    applyWidth(newWidth);
+  });
+
+  window.addEventListener("mouseup", () => {
+    if (!resizing) return;
+    resizing = false;
+    handle.classList.remove("active");
+    document.body.style.userSelect = "";
+    chrome.storage.local.set({ popupWidth: document.body.offsetWidth });
+  });
+})();
+
 const listEl = document.getElementById("list");
 const statsEl = document.getElementById("stats");
 const searchInput = document.getElementById("searchInput");

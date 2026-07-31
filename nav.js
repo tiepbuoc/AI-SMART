@@ -3,7 +3,6 @@
 // thanh menu giống hệt nhau tuyệt đối (không bị lệch giữa các trang).
 
 const NAV_LINKS = [
-  { key: "home", href: "index.html", icon: "fa-house", label: "Trang chủ" },
   { key: "chatbot", href: "chatbot.html", icon: "fa-comments", label: "AI SMART Chatbot" },
   { key: "passport", href: "passport.html", icon: "fa-route", label: "Learning Passport" },
 ];
@@ -27,7 +26,7 @@ function renderSiteNav(activeKey) {
       <div class="nav-right">
         <div id="navUserBox" class="nav-user-box" style="display:none;">
           <span id="navUserEmail" class="nav-user-email"></span>
-          <button id="navLogoutBtn" class="nav-pill-btn"><i class="fa-solid fa-arrow-right-from-bracket"></i> Đăng xuất</button>
+          <button id="navLogoutBtn" class="nav-pill-btn"><i class="fa-solid fa-arrow-right-from-bracket"></i><span class="btn-text"> Đăng xuất</span></button>
         </div>
         <button class="menu-toggle" id="menuToggleBtn"><i class="fa-solid fa-bars"></i></button>
       </div>

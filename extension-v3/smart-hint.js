@@ -42,11 +42,11 @@ function initSmartHint({ inputSelectors, getText, setText }) {
       height: "42px",
       borderRadius: "50%",
       border: "none",
-      background: "#3b6cf6",
+      background: "#e67e22",
       color: "#fff",
       fontSize: "18px",
       cursor: "pointer",
-      boxShadow: "0 6px 16px rgba(59,108,246,0.4)",
+      boxShadow: "0 6px 16px rgba(230,126,34,0.4)",
       display: "none",
     });
     b.addEventListener("click", () => {
@@ -80,7 +80,7 @@ function initSmartHint({ inputSelectors, getText, setText }) {
     el.innerHTML = `
       <div class="ai-smart-drag-handle" style="
         display:flex; align-items:center; justify-content:space-between;
-        background:#3b6cf6; color:#fff; padding:8px 10px; cursor:grab; user-select:none;">
+        background:#e67e22; color:#fff; padding:8px 10px; cursor:grab; user-select:none;">
         <span style="font-weight:700; font-size:12px;">🧭 AI SMART · 5 bước</span>
         <button class="ai-smart-collapse-btn" title="Thu nhỏ" style="
           border:none; background:rgba(255,255,255,0.2); color:#fff; width:22px; height:22px;
@@ -90,12 +90,12 @@ function initSmartHint({ inputSelectors, getText, setText }) {
         <div style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:8px;">
           ${SMART_STEPS_VI.map(
             (s, i) =>
-              `<span style="background:#eaf0ff;color:#3b6cf6;border-radius:999px;padding:3px 8px;font-size:10.5px;font-weight:600;">${i + 1}. ${s.label}</span>`
+              `<span style="background:#fdf1e3;color:#e67e22;border-radius:999px;padding:3px 8px;font-size:10.5px;font-weight:600;">${i + 1}. ${s.label}</span>`
           ).join("")}
         </div>
         <button class="ai-smart-rewrite-btn" style="
           width:100%; padding:8px 8px; border-radius:10px; border:none;
-          background:#3b6cf6; color:#fff; font-size:12.5px; font-weight:700; cursor:pointer;">
+          background:#e67e22; color:#fff; font-size:12.5px; font-weight:700; cursor:pointer;">
           ✨ Viết lại câu hỏi theo SMART
         </button>
         <div class="ai-smart-rewrite-status" style="font-size:10.5px; color:#667085; display:none;"></div>

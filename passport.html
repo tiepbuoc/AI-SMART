@@ -15,12 +15,32 @@
   .loading-text{ font-size:13px; color:var(--text-mid); }
 
   .stat-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
-  .stat-card{ background:var(--card-bg); border:1px solid var(--border); border-radius:20px; padding:18px 20px; }
+  .stat-card{ background:var(--card-bg); border:1.5px solid var(--border); border-radius:20px; padding:18px 20px; }
   .stat-card .num{ font-family:'Fraunces',serif; font-size:28px; font-weight:600; color:var(--orange2); }
   .stat-card .label{ font-size:11.5px; color:var(--text-mid); margin-top:4px; }
 
-  .chart-row{ display:grid; grid-template-columns:1.4fr 1fr; gap:18px; margin-bottom:20px; }
+  .chart-row{ display:grid; grid-template-columns:1.2fr 1fr; gap:18px; margin-bottom:20px; }
+  .chart-row-3{ display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:20px; }
   canvas{ max-width:100%; }
+
+  .tips-card{ margin-bottom:20px; }
+  .tip-item{ display:flex; gap:12px; align-items:flex-start; padding:10px 0; border-bottom:1px solid var(--border); }
+  .tip-item:last-child{ border-bottom:none; }
+  .tip-icon{ width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+    flex-shrink:0; font-size:14px; }
+  .tip-icon.good{ background:var(--green-pale); color:var(--green); }
+  .tip-icon.warn{ background:rgba(243,156,18,0.12); color:var(--gold); }
+  .tip-icon.bad{ background:var(--red-pale); color:var(--red); }
+  .tip-text{ font-size:13px; color:var(--text-dark); line-height:1.55; }
+
+  .filter-row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .filter-row input[type=text]{ flex:1; min-width:160px; padding:9px 14px; border:1.5px solid var(--border);
+    border-radius:12px; font-size:13px; font-family:'DM Sans',sans-serif; background:#fff; }
+  .filter-row select{ padding:9px 12px; border:1.5px solid var(--border); border-radius:12px; font-size:13px;
+    font-family:'DM Sans',sans-serif; background:#fff; }
+  .filter-row button{ padding:9px 14px; border:1.5px solid var(--border); border-radius:12px; background:#fff;
+    font-size:12.5px; font-weight:600; color:var(--text-dark); cursor:pointer; font-family:'DM Sans',sans-serif; }
+  .filter-row button:hover{ border-color:var(--orange); color:var(--orange2); }
 
   table{ width:100%; border-collapse:collapse; font-size:12.5px; }
   th,td{ text-align:left; padding:10px 8px; border-bottom:1px solid var(--border); }
@@ -29,10 +49,11 @@
   .pill.low{ background:var(--green); }
   .pill.mid{ background:var(--gold); }
   .pill.high{ background:var(--red); }
+  .pill.site{ background:var(--text-dim); }
 
   @media (max-width:800px){
     .stat-grid{ grid-template-columns:repeat(2,1fr); }
-    .chart-row{ grid-template-columns:1fr; }
+    .chart-row, .chart-row-3{ grid-template-columns:1fr; }
   }
 </style>
 </head>
@@ -56,6 +77,17 @@
       <div class="stat-card"><div id="statComplexity" class="num">-</div><div class="label">Độ phức tạp TB</div></div>
       <div class="stat-card"><div id="statTotal" class="num">-</div><div class="label">Tổng số câu hỏi</div></div>
     </div>
+    <div class="stat-grid">
+      <div class="stat-card"><div id="statActiveDays" class="num">-</div><div class="label">Số ngày hoạt động</div></div>
+      <div class="stat-card"><div id="statStreak" class="num">-</div><div class="label">Chuỗi ngày liên tiếp</div></div>
+      <div class="stat-card"><div id="statBestSubject" class="num">-</div><div class="label">Môn hỏi nhiều nhất</div></div>
+      <div class="stat-card"><div id="statTrend" class="num">-</div><div class="label">Xu hướng ACI 7 ngày gần đây</div></div>
+    </div>
+
+    <div class="card tips-card">
+      <h3 class="section-title" style="font-size:15px;">💡 Nhận xét & Gợi ý</h3>
+      <div id="tipsList"></div>
+    </div>
 
     <div class="chart-row">
       <div class="card">
@@ -68,8 +100,41 @@
       </div>
     </div>
 
+    <div class="chart-row-3">
+      <div class="card">
+        <h3 class="section-title" style="font-size:15px;">Số câu hỏi theo nền tảng</h3>
+        <canvas id="platformChart" height="160"></canvas>
+      </div>
+      <div class="card">
+        <h3 class="section-title" style="font-size:15px;">Hoạt động 14 ngày gần đây</h3>
+        <canvas id="dailyChart" height="160"></canvas>
+      </div>
+    </div>
+
     <div class="card">
-      <h3 class="section-title" style="font-size:15px;">Lịch sử chi tiết</h3>
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+        <h3 class="section-title" style="font-size:15px; margin:0;">Lịch sử chi tiết</h3>
+        <div style="display:flex; gap:8px;">
+          <button id="exportJsonBtn" style="padding:8px 14px;border:1.5px solid var(--border);border-radius:12px;background:#fff;font-size:12px;font-weight:600;color:var(--text-dark);cursor:pointer;">Xuất JSON</button>
+          <button id="exportCsvBtn" style="padding:8px 14px;border:1.5px solid var(--border);border-radius:12px;background:#fff;font-size:12px;font-weight:600;color:var(--text-dark);cursor:pointer;">Xuất CSV</button>
+        </div>
+      </div>
+      <div class="filter-row">
+        <input id="searchInput" type="text" placeholder="Tìm trong câu hỏi..." />
+        <select id="siteFilter">
+          <option value="all">Tất cả nền tảng</option>
+          <option value="chatgpt">ChatGPT</option>
+          <option value="claude">Claude</option>
+          <option value="gemini">Gemini</option>
+          <option value="website-chatbot">AI SMART Web</option>
+        </select>
+        <select id="riskFilter">
+          <option value="all">Mọi mức rủi ro</option>
+          <option value="low">Thấp (0-32)</option>
+          <option value="mid">Trung bình (33-65)</option>
+          <option value="high">Cao (66-100)</option>
+        </select>
+      </div>
       <table>
         <thead>
           <tr><th>Thời gian</th><th>Nền tảng</th><th>Câu hỏi</th><th>ACI</th><th>Rủi ro ỷ lại</th></tr>
@@ -95,8 +160,12 @@ const page = document.getElementById("page");
 const loadingScreen = document.getElementById("loadingScreen");
 const loadingText = document.getElementById("loadingText");
 const dashboardContent = document.getElementById("dashboardContent");
+const searchInput = document.getElementById("searchInput");
+const siteFilter = document.getElementById("siteFilter");
+const riskFilter = document.getElementById("riskFilter");
 
 const nav = renderSiteNav("passport");
+let allWithAnalysis = [];
 
 watchAuth(
   async (user) => {
@@ -149,7 +218,9 @@ async function runPipeline(uid) {
       .map((d) => ({ id: d.id, ...d.data() }))
       .sort((a, b) => new Date(a.time) - new Date(b.time));
 
-    renderDashboard(allEntries);
+    allWithAnalysis = allEntries.filter((e) => e.analysis);
+    renderDashboard();
+    renderHistoryTable();
 
     loadingScreen.style.display = "none";
     dashboardContent.style.display = "block";
@@ -158,7 +229,7 @@ async function runPipeline(uid) {
   }
 }
 
-function riskPillClass(score) {
+function riskBand(score) {
   if (score >= 66) return "high";
   if (score >= 33) return "mid";
   return "low";
@@ -169,8 +240,17 @@ function formatTime(iso) {
   return d.toLocaleString("vi-VN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
-function renderDashboard(entries) {
-  const withAnalysis = entries.filter((e) => e.analysis);
+function dayKey(iso) {
+  return new Date(iso).toISOString().slice(0, 10);
+}
+
+function siteLabel(site) {
+  const map = { chatgpt: "ChatGPT", claude: "Claude", gemini: "Gemini", "website-chatbot": "AI SMART Web" };
+  return map[site] || site || "-";
+}
+
+function renderDashboard() {
+  const withAnalysis = allWithAnalysis;
   const total = withAnalysis.length;
 
   const avg = (key) =>
@@ -181,57 +261,220 @@ function renderDashboard(entries) {
   document.getElementById("statComplexity").textContent = avg("complexity");
   document.getElementById("statTotal").textContent = total;
 
-  const trendLabels = withAnalysis.map((e) => formatTime(e.time));
-  const trendData = withAnalysis.map((e) => e.analysis.aci);
-  new Chart(document.getElementById("aciTrendChart"), {
-    type: "line",
-    data: {
-      labels: trendLabels,
-      datasets: [{
-        label: "AI Crutch Index",
-        data: trendData,
-        borderColor: "#e67e22",
-        backgroundColor: "rgba(230,126,34,0.12)",
-        tension: 0.25,
-        fill: true,
-        pointRadius: 2,
-      }],
-    },
-    options: { scales: { y: { min: 0, max: 100 } }, plugins: { legend: { display: false } } },
-  });
+  // ---- Số ngày hoạt động + chuỗi ngày liên tiếp ----
+  const uniqueDays = [...new Set(withAnalysis.map((e) => dayKey(e.time)))].sort();
+  document.getElementById("statActiveDays").textContent = uniqueDays.length;
 
+  let streak = 0;
+  if (uniqueDays.length > 0) {
+    streak = 1;
+    for (let i = uniqueDays.length - 1; i > 0; i--) {
+      const cur = new Date(uniqueDays[i]);
+      const prev = new Date(uniqueDays[i - 1]);
+      const diffDays = Math.round((cur - prev) / 86400000);
+      if (diffDays === 1) streak++;
+      else break;
+    }
+    // chỉ tính là chuỗi "đang diễn ra" nếu ngày cuối là hôm nay hoặc hôm qua
+    const lastDay = new Date(uniqueDays[uniqueDays.length - 1]);
+    const today = new Date(dayKey(new Date().toISOString()));
+    const gapFromToday = Math.round((today - lastDay) / 86400000);
+    if (gapFromToday > 1) streak = 0;
+  }
+  document.getElementById("statStreak").textContent = streak + " ngày";
+
+  // ---- Môn hỏi nhiều nhất ----
   const subjectCounts = {};
   withAnalysis.forEach((e) => {
     const label = subjectCodeToLabel(e.analysis.subjectCode);
     subjectCounts[label] = (subjectCounts[label] || 0) + 1;
   });
-  new Chart(document.getElementById("subjectChart"), {
+  const bestSubject = Object.entries(subjectCounts).sort((a, b) => b[1] - a[1])[0];
+  document.getElementById("statBestSubject").textContent = bestSubject ? bestSubject[0] : "-";
+
+  // ---- Xu hướng ACI 7 ngày gần đây (so với 7 ngày trước đó) ----
+  const now = new Date();
+  const last7 = withAnalysis.filter((e) => (now - new Date(e.time)) / 86400000 <= 7);
+  const prev7 = withAnalysis.filter((e) => {
+    const diff = (now - new Date(e.time)) / 86400000;
+    return diff > 7 && diff <= 14;
+  });
+  const avgOf = (arr) => (arr.length ? arr.reduce((s, e) => s + e.analysis.aci, 0) / arr.length : null);
+  const last7Avg = avgOf(last7);
+  const prev7Avg = avgOf(prev7);
+  const trendEl = document.getElementById("statTrend");
+  if (last7Avg === null) {
+    trendEl.textContent = "-";
+  } else if (prev7Avg === null) {
+    trendEl.textContent = Math.round(last7Avg);
+  } else {
+    const delta = Math.round(last7Avg - prev7Avg);
+    trendEl.textContent = (delta > 0 ? "+" : "") + delta;
+    trendEl.style.color = delta > 0 ? "var(--red)" : delta < 0 ? "var(--green)" : "var(--orange2)";
+  }
+
+  renderTips(avg("aci"), avg("effort"), avg("riskScore" in (withAnalysis[0]?.analysis || {}) ? "riskScore" : "riskScore"));
+  renderCharts(withAnalysis, subjectCounts);
+}
+
+function renderTips(avgAci, avgEffort) {
+  const avgRisk = allWithAnalysis.length
+    ? Math.round(allWithAnalysis.reduce((s, e) => s + (e.analysis.riskScore || 0), 0) / allWithAnalysis.length)
+    : 0;
+  const tips = [];
+
+  if (allWithAnalysis.length === 0) {
+    tips.push({ type: "warn", icon: "fa-circle-info", text: "Chưa có đủ dữ liệu để đưa ra nhận xét. Hãy dùng AI SMART Chatbot hoặc tiện ích Chrome thêm để hệ thống có dữ liệu phân tích." });
+  } else {
+    if (avgRisk >= 66) {
+      tips.push({ type: "bad", icon: "fa-triangle-exclamation", text: `Nguy cơ ỷ lại AI trung bình đang khá cao (${avgRisk}/100). Hãy thử tự làm nhiều hơn trước khi hỏi AI, chỉ xin gợi ý ở đúng chỗ mình vướng.` });
+    } else if (avgRisk >= 33) {
+      tips.push({ type: "warn", icon: "fa-circle-exclamation", text: `Mức ỷ lại AI ở mức trung bình (${avgRisk}/100). Cố gắng nêu rõ hơn những gì bạn đã tự thử trước khi hỏi.` });
+    } else {
+      tips.push({ type: "good", icon: "fa-circle-check", text: `Thói quen dùng AI khá lành mạnh (rủi ro ỷ lại chỉ ${avgRisk}/100). Tiếp tục duy trì nhé!` });
+    }
+
+    if (avgEffort < 40) {
+      tips.push({ type: "warn", icon: "fa-pen", text: "Mức nỗ lực tự thân thể hiện trong câu hỏi còn thấp — hãy thử nêu rõ mình đã làm được gì và vướng ở bước nào trước khi hỏi AI." });
+    } else {
+      tips.push({ type: "good", icon: "fa-pen", text: "Bạn thường nêu rõ những gì đã tự thử trước khi hỏi — đây là thói quen học tập tốt." });
+    }
+
+    const uniqueDays = [...new Set(allWithAnalysis.map((e) => dayKey(e.time)))];
+    if (uniqueDays.length >= 3) {
+      tips.push({ type: "good", icon: "fa-calendar-check", text: `Bạn đã dùng AI SMART trong ${uniqueDays.length} ngày khác nhau — hãy giữ thói quen học đều đặn này.` });
+    }
+  }
+
+  document.getElementById("tipsList").innerHTML = tips.map((t) => `
+    <div class="tip-item">
+      <div class="tip-icon ${t.type}"><i class="fa-solid ${t.icon}"></i></div>
+      <div class="tip-text"></div>
+    </div>
+  `).join("");
+  document.querySelectorAll(".tip-text").forEach((el, i) => { el.textContent = tips[i].text; });
+}
+
+let aciChart, subjectChartInst, platformChartInst, dailyChartInst;
+
+function renderCharts(withAnalysis, subjectCounts) {
+  const trendLabels = withAnalysis.map((e) => formatTime(e.time));
+  const trendData = withAnalysis.map((e) => e.analysis.aci);
+  if (aciChart) aciChart.destroy();
+  aciChart = new Chart(document.getElementById("aciTrendChart"), {
+    type: "line",
+    data: {
+      labels: trendLabels,
+      datasets: [{
+        label: "AI Crutch Index", data: trendData, borderColor: "#e67e22",
+        backgroundColor: "rgba(230,126,34,0.12)", tension: 0.25, fill: true, pointRadius: 2,
+      }],
+    },
+    options: { scales: { y: { min: 0, max: 100 } }, plugins: { legend: { display: false } } },
+  });
+
+  if (subjectChartInst) subjectChartInst.destroy();
+  subjectChartInst = new Chart(document.getElementById("subjectChart"), {
     type: "doughnut",
     data: {
       labels: Object.keys(subjectCounts),
-      datasets: [{
-        data: Object.values(subjectCounts),
-        backgroundColor: ["#e67e22", "#f39c12", "#e74c3c", "#1f9d6c", "#9b7fd4", "#95a5a6"],
-      }],
+      datasets: [{ data: Object.values(subjectCounts), backgroundColor: ["#e67e22", "#f39c12", "#e74c3c", "#1f9d6c", "#9b7fd4", "#95a5a6"] }],
     },
     options: { plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 10 } } } } },
   });
 
+  // ---- Biểu đồ theo nền tảng ----
+  const platformCounts = {};
+  withAnalysis.forEach((e) => {
+    const label = siteLabel(e.site);
+    platformCounts[label] = (platformCounts[label] || 0) + 1;
+  });
+  if (platformChartInst) platformChartInst.destroy();
+  platformChartInst = new Chart(document.getElementById("platformChart"), {
+    type: "bar",
+    data: {
+      labels: Object.keys(platformCounts),
+      datasets: [{ label: "Số câu hỏi", data: Object.values(platformCounts), backgroundColor: "#e67e22", borderRadius: 8 }],
+    },
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } },
+  });
+
+  // ---- Biểu đồ hoạt động 14 ngày gần đây ----
+  const days = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(d.toISOString().slice(0, 10));
+  }
+  const countByDay = {};
+  withAnalysis.forEach((e) => {
+    const k = dayKey(e.time);
+    countByDay[k] = (countByDay[k] || 0) + 1;
+  });
+  if (dailyChartInst) dailyChartInst.destroy();
+  dailyChartInst = new Chart(document.getElementById("dailyChart"), {
+    type: "bar",
+    data: {
+      labels: days.map((d) => d.slice(5)),
+      datasets: [{ label: "Số câu hỏi", data: days.map((d) => countByDay[d] || 0), backgroundColor: "#f39c12", borderRadius: 6 }],
+    },
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } },
+  });
+}
+
+// ============ Bảng lịch sử: tìm kiếm / lọc / xuất ============
+function renderHistoryTable() {
+  const q = searchInput.value.trim().toLowerCase();
+  const siteVal = siteFilter.value;
+  const riskVal = riskFilter.value;
+
+  const filtered = allWithAnalysis.filter((e) => {
+    const matchesQuery = !q || (e.text || "").toLowerCase().includes(q);
+    const matchesSite = siteVal === "all" || e.site === siteVal;
+    const matchesRisk = riskVal === "all" || riskBand(e.analysis.riskScore) === riskVal;
+    return matchesQuery && matchesSite && matchesRisk;
+  });
+
   const tbody = document.getElementById("historyBody");
   tbody.innerHTML = "";
-  withAnalysis.slice().reverse().slice(0, 100).forEach((e) => {
+  filtered.slice().reverse().slice(0, 200).forEach((e) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${formatTime(e.time)}</td>
-      <td>${e.site || "-"}</td>
+      <td><span class="pill site">${siteLabel(e.site)}</span></td>
       <td style="max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></td>
-      <td><span class="pill ${riskPillClass(e.analysis.aci)}">${e.analysis.aci}</span></td>
-      <td><span class="pill ${riskPillClass(e.analysis.riskScore)}">${e.analysis.riskScore}</span></td>
+      <td><span class="pill ${riskBand(e.analysis.aci)}">${e.analysis.aci}</span></td>
+      <td><span class="pill ${riskBand(e.analysis.riskScore)}">${e.analysis.riskScore}</span></td>
     `;
     tr.children[2].textContent = e.text || "";
     tbody.appendChild(tr);
   });
 }
+
+searchInput.addEventListener("input", renderHistoryTable);
+siteFilter.addEventListener("change", renderHistoryTable);
+riskFilter.addEventListener("change", renderHistoryTable);
+
+function downloadFile(filename, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById("exportJsonBtn").addEventListener("click", () => {
+  downloadFile(`ai-learning-passport-${Date.now()}.json`, JSON.stringify(allWithAnalysis, null, 2), "application/json");
+});
+document.getElementById("exportCsvBtn").addEventListener("click", () => {
+  const esc = (s) => `"${String(s ?? "").replace(/"/g, '""')}"`;
+  const header = ["time", "site", "text", "aci", "complexity", "effort", "subject", "riskScore"].join(",");
+  const rows = allWithAnalysis.map((e) => [
+    e.time, e.site, esc(e.text), e.analysis.aci, e.analysis.complexity, e.analysis.effort,
+    subjectCodeToLabel(e.analysis.subjectCode), e.analysis.riskScore,
+  ].join(","));
+  downloadFile(`ai-learning-passport-${Date.now()}.csv`, [header, ...rows].join("\n"), "text/csv");
+});
 </script>
 </body>
 </html>

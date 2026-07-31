@@ -9,16 +9,51 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 <style>
   body{ height:100vh; overflow:hidden; padding-top:72px; }
-  #chatWrap{ height:calc(100vh - 72px); display:flex; flex-direction:column; background:var(--bg); }
-  .cb-header{ padding:10px 5%; background:var(--card-bg); border-bottom:1px solid var(--border);
-    display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:6px; }
+  #chatLayout{ height:calc(100vh - 72px); display:flex; }
+
+  /* ---- Sidebar lịch sử hội thoại ---- */
+  #sidebar{
+    width:270px; flex-shrink:0; background:var(--card-bg); border-right:1.5px solid var(--border);
+    display:flex; flex-direction:column;
+  }
+  #sidebarHeader{ padding:14px; border-bottom:1.5px solid var(--border); }
+  #newChatBtn{
+    width:100%; padding:11px 0; border:none; border-radius:14px;
+    background:linear-gradient(135deg,var(--orange2),var(--orange)); color:#fff;
+    font-size:13.5px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  #convList{ flex:1; overflow-y:auto; padding:10px; }
+  .conv-item{
+    padding:11px 12px; border-radius:14px; cursor:pointer; margin-bottom:5px;
+    display:flex; justify-content:space-between; align-items:flex-start; gap:6px;
+    border:1.5px solid transparent;
+  }
+  .conv-item:hover{ background:var(--orange-pale); }
+  .conv-item.active{ background:var(--orange-pale); border-color:var(--border); }
+  .conv-item .conv-title{ font-size:13px; font-weight:600; color:var(--text-dark); line-height:1.3;
+    overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+  .conv-item .conv-time{ font-size:10.5px; color:var(--text-dim); margin-top:3px; }
+  .conv-delete-btn{ border:none; background:transparent; color:var(--text-dim); font-size:12px; cursor:pointer; padding:2px; flex-shrink:0; }
+  .conv-delete-btn:hover{ color:var(--red); }
+  .conv-empty{ font-size:12px; color:var(--text-dim); text-align:center; padding:20px 10px; }
+
+  #sidebarOverlay{ display:none; }
+
+  /* ---- Khu vực chat chính ---- */
+  #chatMain{ flex:1; display:flex; flex-direction:column; min-width:0; }
+  .cb-header{ padding:10px 5%; background:var(--card-bg); border-bottom:1.5px solid var(--border);
+    display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:6px; position:relative; }
+  #sidebarToggleBtn{ display:none; position:absolute; left:5%; top:50%; transform:translateY(-50%);
+    background:#fff; border:1.5px solid var(--border); border-radius:10px; width:34px; height:34px;
+    align-items:center; justify-content:center; color:var(--orange2); cursor:pointer; }
   .smart-steps{ display:flex; gap:6px; font-size:11px; color:var(--text-mid); flex-wrap:wrap; justify-content:center; }
   .smart-steps span{ background:var(--orange-pale); color:var(--orange2); border-radius:999px; padding:5px 12px; font-weight:600; }
   #chat{ flex:1; overflow-y:auto; padding:20px 5%; display:flex; flex-direction:column; gap:14px; background:var(--bg); }
   .msg{max-width:75%; padding:13px 17px; border-radius:20px; line-height:1.6; font-size:14.5px; word-wrap:break-word;}
   .msg.user{align-self:flex-end; background:linear-gradient(135deg,var(--orange2),var(--orange)); color:#fff; border-bottom-right-radius:6px;}
-  .msg.bot{align-self:flex-start; background:var(--card-bg); border:1px solid var(--border); border-bottom-left-radius:6px; color:var(--text-dark);}
-  .msg.error{align-self:flex-start; background:var(--red-pale); border:1px solid #f3b9b9; color:#b3403a;}
+  .msg.bot{align-self:flex-start; background:var(--card-bg); border:1.5px solid var(--border); border-bottom-left-radius:6px; color:var(--text-dark);}
+  .msg.error{align-self:flex-start; background:var(--red-pale); border:1.5px solid #f3b9b9; color:#b3403a;}
   .role-label{font-size:11px; color:var(--text-mid); margin-bottom:5px; font-weight:700;}
   .msg.user .role-label{ color:rgba(255,255,255,0.85); }
   .msg-body p{ margin:0 0 8px; }
@@ -29,7 +64,7 @@
   .msg-body pre code{ background:none; color:inherit; padding:0; }
   .msg-body h1,.msg-body h2,.msg-body h3{ margin:10px 0 6px; font-size:15px; font-family:'Fraunces',serif; }
   .msg-body hr{ border:none; border-top:1px solid var(--border); margin:10px 0; }
-  #inputBar{ padding:14px 5% 18px; background:var(--card-bg); border-top:1px solid var(--border);
+  #inputBar{ padding:14px 5% 18px; background:var(--card-bg); border-top:1.5px solid var(--border);
     display:flex; flex-direction:column; gap:8px; }
   #row2{display:flex; gap:8px; align-items:flex-end;}
   #textInput{ flex:1; resize:none; min-height:48px; max-height:140px; padding:13px 18px;
@@ -43,24 +78,48 @@
     box-shadow:0 4px 14px rgba(230,126,34,0.3); }
   #sendBtn:disabled{opacity:.5; cursor:not-allowed;}
   #status{font-size:12px; color:var(--text-mid); min-height:16px; text-align:center;}
+
+  @media (max-width:800px){
+    #sidebar{
+      position:fixed; top:72px; bottom:0; left:0; width:82%; max-width:300px; z-index:150;
+      transform:translateX(-100%); transition:transform .25s ease; box-shadow:8px 0 24px rgba(0,0,0,0.12);
+    }
+    #sidebar.open{ transform:translateX(0); }
+    #sidebarOverlay.show{
+      display:block; position:fixed; inset:72px 0 0 0; background:rgba(44,62,80,0.35); z-index:140;
+    }
+    #sidebarToggleBtn{ display:flex; }
+    .msg{ max-width:88%; }
+  }
 </style>
 </head>
 <body>
 
 <div id="guard" class="auth-screen"><p>Đang kiểm tra đăng nhập...</p></div>
 
-<div id="chatWrap" style="display:none;">
-  <header class="cb-header">
-    <div class="smart-steps" id="stepsBar"></div>
-  </header>
+<div id="chatLayout" style="display:none;">
+  <div id="sidebarOverlay"></div>
+  <aside id="sidebar">
+    <div id="sidebarHeader">
+      <button id="newChatBtn"><i class="fa-solid fa-plus"></i> Cuộc trò chuyện mới</button>
+    </div>
+    <div id="convList"></div>
+  </aside>
 
-  <div id="chat"></div>
+  <div id="chatMain">
+    <header class="cb-header">
+      <button id="sidebarToggleBtn"><i class="fa-solid fa-bars"></i></button>
+      <div class="smart-steps" id="stepsBar"></div>
+    </header>
 
-  <div id="inputBar">
-    <div id="status"></div>
-    <div id="row2">
-      <textarea id="textInput" placeholder="Nhập câu hỏi bài tập của bạn... (Enter để gửi, Shift+Enter xuống dòng)"></textarea>
-      <button class="icon-btn" id="sendBtn" title="Gửi"><i class="fa-solid fa-paper-plane"></i></button>
+    <div id="chat"></div>
+
+    <div id="inputBar">
+      <div id="status"></div>
+      <div id="row2">
+        <textarea id="textInput" placeholder="Nhập câu hỏi bài tập của bạn... (Enter để gửi, Shift+Enter xuống dòng)"></textarea>
+        <button class="icon-btn" id="sendBtn" title="Gửi"><i class="fa-solid fa-paper-plane"></i></button>
+      </div>
     </div>
   </div>
 </div>
@@ -74,16 +133,23 @@
 <script type="module">
 import { watchAuth, getApiConfig, logout } from "./auth-web.js";
 import { db } from "./firebase-config.js";
-import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  collection, addDoc, updateDoc, deleteDoc, doc, getDocs, query, orderBy, serverTimestamp,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { SMART_SYSTEM_PROMPT, SMART_STEPS_VI, callAiApi } from "./smart-shared.js";
 
 const guard = document.getElementById("guard");
-const chatWrap = document.getElementById("chatWrap");
+const chatLayout = document.getElementById("chatLayout");
 const chatEl = document.getElementById('chat');
 const textInput = document.getElementById('textInput');
 const sendBtn = document.getElementById('sendBtn');
 const statusEl = document.getElementById('status');
 const stepsBar = document.getElementById('stepsBar');
+const convListEl = document.getElementById("convList");
+const newChatBtn = document.getElementById("newChatBtn");
+const sidebar = document.getElementById("sidebar");
+const sidebarOverlay = document.getElementById("sidebarOverlay");
+const sidebarToggleBtn = document.getElementById("sidebarToggleBtn");
 
 const nav = renderSiteNav("chatbot");
 stepsBar.innerHTML = SMART_STEPS_VI.map((s, i) => `<span title="${s.desc}">${i + 1}. ${s.label}</span>`).join("");
@@ -91,14 +157,21 @@ stepsBar.innerHTML = SMART_STEPS_VI.map((s, i) => `<span title="${s.desc}">${i +
 let currentUser = null;
 let apiConfig = null;
 let history = [{ role: "system", content: SMART_SYSTEM_PROMPT }];
+let conversations = []; // { id, title, messages, updatedAt }
+let activeConvId = null;
+
+sidebarToggleBtn.onclick = () => { sidebar.classList.add("open"); sidebarOverlay.classList.add("show"); };
+sidebarOverlay.onclick = () => { sidebar.classList.remove("open"); sidebarOverlay.classList.remove("show"); };
 
 watchAuth(
   async (user) => {
     currentUser = user;
     apiConfig = await getApiConfig();
     guard.style.display = "none";
-    chatWrap.style.display = "flex";
+    chatLayout.style.display = "flex";
     nav.setUser(user.email, () => logout());
+    await loadConversations();
+    startNewConversation();
   },
   () => { window.location.href = "index.html"; }
 );
@@ -107,7 +180,105 @@ textInput.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 });
 sendBtn.onclick = sendMessage;
+newChatBtn.onclick = () => {
+  startNewConversation();
+  sidebar.classList.remove("open"); sidebarOverlay.classList.remove("show");
+};
 
+// ============ Quản lý danh sách hội thoại ============
+async function loadConversations() {
+  const convCol = collection(db, "users", currentUser.uid, "conversations");
+  const snap = await getDocs(query(convCol, orderBy("updatedAt", "desc")));
+  conversations = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  renderConvList();
+}
+
+function renderConvList() {
+  if (conversations.length === 0) {
+    convListEl.innerHTML = `<div class="conv-empty">Chưa có cuộc trò chuyện nào.</div>`;
+    return;
+  }
+  convListEl.innerHTML = "";
+  conversations.forEach((conv) => {
+    const item = document.createElement("div");
+    item.className = "conv-item" + (conv.id === activeConvId ? " active" : "");
+    item.innerHTML = `
+      <div style="min-width:0; flex:1;">
+        <div class="conv-title"></div>
+        <div class="conv-time">${formatRelTime(conv.updatedAt)}</div>
+      </div>
+      <button class="conv-delete-btn" title="Xoá"><i class="fa-solid fa-trash"></i></button>
+    `;
+    item.querySelector(".conv-title").textContent = conv.title || "Cuộc trò chuyện";
+    item.addEventListener("click", (e) => {
+      if (e.target.closest(".conv-delete-btn")) return;
+      selectConversation(conv.id);
+      sidebar.classList.remove("open"); sidebarOverlay.classList.remove("show");
+    });
+    item.querySelector(".conv-delete-btn").addEventListener("click", async (e) => {
+      e.stopPropagation();
+      if (!confirm("Xoá cuộc trò chuyện này?")) return;
+      await deleteDoc(doc(db, "users", currentUser.uid, "conversations", conv.id));
+      conversations = conversations.filter((c) => c.id !== conv.id);
+      if (activeConvId === conv.id) startNewConversation();
+      renderConvList();
+    });
+    convListEl.appendChild(item);
+  });
+}
+
+function formatRelTime(ts) {
+  if (!ts) return "";
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleString("vi-VN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+function startNewConversation() {
+  activeConvId = null;
+  history = [{ role: "system", content: SMART_SYSTEM_PROMPT }];
+  chatEl.innerHTML = "";
+  renderConvList();
+}
+
+function selectConversation(convId) {
+  const conv = conversations.find((c) => c.id === convId);
+  if (!conv) return;
+  activeConvId = convId;
+  history = [{ role: "system", content: SMART_SYSTEM_PROMPT }, ...(conv.messages || [])];
+  chatEl.innerHTML = "";
+  (conv.messages || []).forEach((m) => {
+    const role = m.role === "user" ? "user" : "bot";
+    const { body } = addMessageToUI(role, m.content);
+    if (role === "bot") renderBotContent(body, m.content);
+  });
+  renderConvList();
+}
+
+async function persistConversation() {
+  const messagesToSave = history.filter((m) => m.role !== "system");
+  if (activeConvId) {
+    await updateDoc(doc(db, "users", currentUser.uid, "conversations", activeConvId), {
+      messages: messagesToSave,
+      updatedAt: serverTimestamp(),
+    });
+    const conv = conversations.find((c) => c.id === activeConvId);
+    if (conv) conv.messages = messagesToSave;
+  } else {
+    const firstUserMsg = messagesToSave.find((m) => m.role === "user");
+    const title = (firstUserMsg?.content || "Cuộc trò chuyện mới").slice(0, 60);
+    const ref = await addDoc(collection(db, "users", currentUser.uid, "conversations"), {
+      title,
+      messages: messagesToSave,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    activeConvId = ref.id;
+    conversations.unshift({ id: ref.id, title, messages: messagesToSave, updatedAt: new Date() });
+  }
+  renderConvList();
+}
+
+// ============ Hiển thị & gửi tin nhắn ============
 function renderBotContent(container, rawText) {
   const html = marked.parse(rawText, { breaks: true });
   container.innerHTML = DOMPurify.sanitize(html);
@@ -132,8 +303,7 @@ function addMessageToUI(role, text){
   body.className = 'msg-body';
   wrap.innerHTML = `<div class="role-label">${label}</div>`;
   wrap.appendChild(body);
-  if (role === 'bot') renderBotContent(body, text);
-  else body.textContent = text;
+  if (role !== 'bot') body.textContent = text;
   chatEl.appendChild(wrap);
   chatEl.scrollTop = chatEl.scrollHeight;
   return { wrap, body };
@@ -170,6 +340,7 @@ async function sendMessage(){
   statusEl.textContent = '⏳ Đang gửi yêu cầu...';
 
   const bot = addMessageToUI('bot', '...');
+  bot.body.textContent = '...';
 
   try {
     const reply = await callAiApi({
@@ -183,6 +354,7 @@ async function sendMessage(){
     history.push({ role: 'assistant', content: finalReply });
     statusEl.textContent = '';
     logToFirestore(text, finalReply);
+    await persistConversation();
   } catch (err) {
     bot.wrap.remove();
     addMessageToUI('error', 'Lỗi khi gọi API: ' + err.message);

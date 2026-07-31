@@ -3,54 +3,61 @@
 <head>
 <meta charset="UTF-8" />
 <title>Kết nối tài khoản — AI SMART</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Inter:wght@400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
   :root{
-    --bg:#ffffff; --bg-soft:#f6f8fc; --ink:#1e2433; --ink-soft:#667085;
-    --line:#e7eaf3; --blue:#3b6cf6; --blue-soft:#eaf0ff; --green:#17a673; --red:#ef4444;
+    --bg:#ffffff; --card-bg:#fffaf5; --ink:#2c3e50; --ink-soft:#7f8c8d;
+    --border:#f0d4a8; --orange:#e67e22; --orange2:#d35400; --orange-soft:rgba(230,126,34,0.08);
+    --green:#1f9d6c; --red:#e74c3c;
   }
   *{box-sizing:border-box;}
   body{
     margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
     background:
-      radial-gradient(circle at 20% 15%, rgba(59,108,246,0.08), transparent 40%),
-      radial-gradient(circle at 85% 85%, rgba(255,138,61,0.08), transparent 40%),
+      radial-gradient(circle at 20% 15%, rgba(230,126,34,0.08), transparent 40%),
+      radial-gradient(circle at 85% 85%, rgba(243,156,18,0.08), transparent 40%),
       var(--bg);
-    font-family:'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color:var(--ink);
+    font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; color:var(--ink);
   }
   .card{
-    width:100%; max-width:420px; background:#fff; border:1px solid var(--line);
-    border-radius:22px; padding:36px 34px; box-shadow:0 16px 40px rgba(30,36,51,0.08);
+    width:100%; max-width:420px; background:var(--card-bg); border:1.5px solid var(--border);
+    border-radius:28px; padding:38px 34px; box-shadow:0 16px 40px rgba(44,62,80,0.08);
   }
-  h1{ font-family:'Baloo 2',sans-serif; font-size:26px; margin:0 0 6px; color:var(--blue); }
+  h1{ font-family:'Fraunces',serif; font-size:26px; font-weight:700; margin:0 0 6px; color:var(--ink);
+    display:flex; align-items:center; gap:10px; }
+  h1 i{ color:var(--orange); }
   .subtitle{ font-size:13.5px; color:var(--ink-soft); line-height:1.6; margin:0 0 22px; }
   .consent-box{
-    background:var(--blue-soft); border-radius:14px; padding:12px 14px; font-size:12.5px;
-    color:var(--ink); line-height:1.55; margin-bottom:20px;
+    background:var(--orange-soft); border:1px solid var(--border); border-radius:16px; padding:12px 14px;
+    font-size:12.5px; color:var(--ink); line-height:1.55; margin-bottom:20px;
   }
-  .tabs{ display:flex; background:var(--bg-soft); border-radius:999px; padding:4px; margin-bottom:16px; }
+  .tabs{ display:flex; background:#fff; border:1.5px solid var(--border); border-radius:999px; padding:4px; margin-bottom:16px; }
   .tab{ flex:1; padding:8px 0; border:none; background:transparent; border-radius:999px;
-    font-size:13px; font-weight:600; color:var(--ink-soft); cursor:pointer; }
-  .tab.active{ background:var(--blue); color:#fff; }
+    font-size:13px; font-weight:600; color:var(--ink-soft); cursor:pointer; font-family:'DM Sans',sans-serif; }
+  .tab.active{ background:linear-gradient(135deg,var(--orange2),var(--orange)); color:#fff; }
   input{
-    width:100%; padding:11px 14px; margin-bottom:10px; border:1.5px solid var(--line);
-    border-radius:12px; font-size:14px; background:var(--bg-soft);
+    width:100%; padding:11px 14px; margin-bottom:10px; border:1.5px solid var(--border);
+    border-radius:14px; font-size:14px; background:#fff; font-family:'DM Sans',sans-serif;
   }
-  input:focus{ outline:none; border-color:var(--blue); background:#fff; }
+  input:focus{ outline:none; border-color:var(--orange); }
   button.primary{
-    width:100%; padding:12px 0; border:none; border-radius:12px; background:var(--blue);
-    color:#fff; font-size:14px; font-weight:700; cursor:pointer;
+    width:100%; padding:12px 0; border:none; border-radius:14px;
+    background:linear-gradient(135deg,var(--orange2),var(--orange)); color:#fff; font-size:14px;
+    font-weight:700; cursor:pointer; font-family:'DM Sans',sans-serif;
+    box-shadow:0 6px 18px rgba(230,126,34,0.3);
   }
-  button.primary:hover{ background:#2c58d6; }
+  button.primary:hover{ filter:brightness(1.05); }
   button.primary:disabled{ opacity:.6; cursor:not-allowed; }
   .msg{ margin-top:10px; font-size:12.5px; min-height:16px; color:var(--red); }
   .success-screen{ display:none; text-align:center; }
-  .success-screen .check{ font-size:44px; margin-bottom:10px; }
-  .success-screen h2{ font-family:'Baloo 2',sans-serif; color:var(--green); margin:0 0 8px; }
+  .success-screen .check{ font-size:44px; margin-bottom:10px; color:var(--green); }
+  .success-screen h2{ font-family:'Fraunces',serif; color:var(--green); margin:0 0 8px; font-weight:700; }
   .success-screen p{ font-size:13.5px; color:var(--ink-soft); line-height:1.6; }
   .close-btn{
-    margin-top:16px; padding:10px 18px; border-radius:12px; border:1.5px solid var(--line);
+    margin-top:16px; padding:10px 18px; border-radius:14px; border:1.5px solid var(--border);
     background:#fff; cursor:pointer; font-size:13px; font-weight:600; color:var(--ink);
+    font-family:'DM Sans',sans-serif;
   }
 </style>
 </head>
@@ -58,7 +65,7 @@
 
 <div class="card">
   <div id="formScreen">
-    <h1>🧭 AI SMART</h1>
+    <h1><i class="fa-solid fa-compass"></i> AI SMART</h1>
     <p class="subtitle">Kết nối tài khoản để dùng gợi ý viết câu hỏi theo khung SMART và xem lại thống kê ở AI Learning Passport.</p>
 
     <div class="consent-box">
@@ -77,7 +84,7 @@
   </div>
 
   <div id="successScreen" class="success-screen">
-    <div class="check">🎉</div>
+    <div class="check"><i class="fa-solid fa-circle-check"></i></div>
     <h2>Đã kết nối!</h2>
     <p>Tiện ích sẽ tự động đồng bộ liên tục dữ liệu từ giờ. Bạn có thể đóng tab này và bắt đầu dùng ChatGPT / Claude / Gemini như bình thường.</p>
     <button class="close-btn" id="closeBtn">Đóng tab này</button>
