@@ -13,10 +13,10 @@
 
   /* ---- Sidebar lịch sử hội thoại ---- */
   #sidebar{
-    width:270px; flex-shrink:0; background:var(--card-bg); border-right:1.5px solid var(--border);
+    width:270px; flex-shrink:0; background:var(--card-bg); border-right:1px solid var(--border);
     display:flex; flex-direction:column;
   }
-  #sidebarHeader{ padding:14px; border-bottom:1.5px solid var(--border); }
+  #sidebarHeader{ padding:14px; border-bottom:1px solid var(--border); }
   #newChatBtn{
     width:100%; padding:11px 0; border:none; border-radius:14px;
     background:linear-gradient(135deg,var(--orange2),var(--orange)); color:#fff;
@@ -27,10 +27,10 @@
   .conv-item{
     padding:11px 12px; border-radius:14px; cursor:pointer; margin-bottom:5px;
     display:flex; justify-content:space-between; align-items:flex-start; gap:6px;
-    border:1.5px solid transparent;
+    background:#f5e6d3; border:1px solid var(--border);
   }
-  .conv-item:hover{ background:var(--orange-pale); }
-  .conv-item.active{ background:var(--orange-pale); border-color:var(--border); }
+  .conv-item:hover{ background:#f0dcc0; }
+  .conv-item.active{ background:var(--orange-pale); border-color:var(--orange); }
   .conv-item .conv-title{ font-size:13px; font-weight:600; color:var(--text-dark); line-height:1.3;
     overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
   .conv-item .conv-time{ font-size:10.5px; color:var(--text-dim); margin-top:3px; }
@@ -42,18 +42,19 @@
 
   /* ---- Khu vực chat chính ---- */
   #chatMain{ flex:1; display:flex; flex-direction:column; min-width:0; }
-  .cb-header{ padding:10px 5%; background:var(--card-bg); border-bottom:1.5px solid var(--border);
-    display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:6px; position:relative; }
-  #sidebarToggleBtn{ display:none; position:absolute; left:5%; top:50%; transform:translateY(-50%);
-    background:#fff; border:1.5px solid var(--border); border-radius:10px; width:34px; height:34px;
-    align-items:center; justify-content:center; color:var(--orange2); cursor:pointer; }
-  .smart-steps{ display:flex; gap:6px; font-size:11px; color:var(--text-mid); flex-wrap:wrap; justify-content:center; }
-  .smart-steps span{ background:var(--orange-pale); color:var(--orange2); border-radius:999px; padding:5px 12px; font-weight:600; }
+  .cb-header{ padding:10px 5%; background:var(--card-bg); border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between; gap:8px; position:relative; }
+  #sidebarToggleBtn{ display:none; background:#fff; border:1px solid var(--border); border-radius:10px;
+    width:34px; height:34px; align-items:center; justify-content:center; color:var(--orange2); cursor:pointer; }
+  #helpBtn{ background:#fff; border:1px solid var(--border); border-radius:10px; padding:7px 13px;
+    font-size:12px; font-weight:600; color:var(--orange2); cursor:pointer; display:flex; align-items:center; gap:6px;
+    font-family:'DM Sans',sans-serif; margin-left:auto; }
+  #helpBtn:hover{ border-color:var(--orange); }
   #chat{ flex:1; overflow-y:auto; padding:20px 5%; display:flex; flex-direction:column; gap:14px; background:var(--bg); }
   .msg{max-width:75%; padding:13px 17px; border-radius:20px; line-height:1.6; font-size:14.5px; word-wrap:break-word;}
   .msg.user{align-self:flex-end; background:linear-gradient(135deg,var(--orange2),var(--orange)); color:#fff; border-bottom-right-radius:6px;}
-  .msg.bot{align-self:flex-start; background:var(--card-bg); border:1.5px solid var(--border); border-bottom-left-radius:6px; color:var(--text-dark);}
-  .msg.error{align-self:flex-start; background:var(--red-pale); border:1.5px solid #f3b9b9; color:#b3403a;}
+  .msg.bot{align-self:flex-start; background:var(--card-bg); border:1px solid var(--border); border-bottom-left-radius:6px; color:var(--text-dark);}
+  .msg.error{align-self:flex-start; background:var(--red-pale); border:1px solid #f3b9b9; color:#b3403a;}
   .role-label{font-size:11px; color:var(--text-mid); margin-bottom:5px; font-weight:700;}
   .msg.user .role-label{ color:rgba(255,255,255,0.85); }
   .msg-body p{ margin:0 0 8px; }
@@ -64,7 +65,7 @@
   .msg-body pre code{ background:none; color:inherit; padding:0; }
   .msg-body h1,.msg-body h2,.msg-body h3{ margin:10px 0 6px; font-size:15px; font-family:'Fraunces',serif; }
   .msg-body hr{ border:none; border-top:1px solid var(--border); margin:10px 0; }
-  #inputBar{ padding:14px 5% 18px; background:var(--card-bg); border-top:1.5px solid var(--border);
+  #inputBar{ padding:14px 5% 18px; background:var(--card-bg); border-top:1px solid var(--border);
     display:flex; flex-direction:column; gap:8px; }
   #row2{display:flex; gap:8px; align-items:flex-end;}
   #textInput{ flex:1; resize:none; min-height:48px; max-height:140px; padding:13px 18px;
@@ -77,7 +78,25 @@
   #sendBtn{ background:linear-gradient(135deg,var(--orange2),var(--orange)); border:none; color:#fff;
     box-shadow:0 4px 14px rgba(230,126,34,0.3); }
   #sendBtn:disabled{opacity:.5; cursor:not-allowed;}
-  #status{font-size:12px; color:var(--text-mid); min-height:16px; text-align:center;}
+
+  /* ---- Popup hướng dẫn (chỉ hiện lần đầu) ---- */
+  #introOverlay{
+    position:fixed; inset:0; z-index:500; background:rgba(44,62,80,0.45);
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  #introCard{
+    max-width:460px; width:100%; background:var(--card-bg); border:1px solid var(--border);
+    border-radius:26px; padding:30px 28px; box-shadow:0 24px 50px rgba(44,62,80,0.2);
+  }
+  #introCard h2{ font-family:'Fraunces',serif; font-size:22px; margin:0 0 12px; color:var(--text-dark); }
+  #introCard .intro-step{ display:flex; gap:12px; align-items:flex-start; margin-bottom:12px; }
+  #introCard .intro-num{ width:26px; height:26px; border-radius:50%; background:var(--orange-pale); color:var(--orange2);
+    font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  #introCard .intro-text{ font-size:13.5px; color:var(--text-dark); line-height:1.55; }
+  #introCard .intro-tip{ font-size:12.5px; color:var(--text-mid); background:#fff; border:1px solid var(--border);
+    border-radius:14px; padding:12px 14px; margin:16px 0; line-height:1.55; }
+  #introCard .intro-checkbox{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--text-mid); margin-bottom:16px; }
+  #introCard .intro-checkbox input{ accent-color:var(--orange); }
 
   @media (max-width:800px){
     #sidebar{
@@ -97,6 +116,20 @@
 
 <div id="guard" class="auth-screen"><p>Đang kiểm tra đăng nhập...</p></div>
 
+<div id="introOverlay" style="display:none;">
+  <div id="introCard">
+    <h2>👋 Chào mừng bạn đến với AI SMART!</h2>
+    <div class="intro-step"><div class="intro-num">1</div><div class="intro-text">Kể cho AI biết bạn đang gặp khó ở đâu và <strong>đã tự thử gì rồi</strong>.</div></div>
+    <div class="intro-step"><div class="intro-num">2</div><div class="intro-text">AI sẽ tìm ra đúng phần bạn còn <strong>thiếu</strong>, không phán xét.</div></div>
+    <div class="intro-step"><div class="intro-num">3</div><div class="intro-text">AI chỉ <strong>gợi ý hướng đi</strong> (công thức, cách làm) — không giải hộ bạn.</div></div>
+    <div class="intro-step"><div class="intro-num">4</div><div class="intro-text">Bạn <strong>tự hoàn thành</strong> bài dựa trên gợi ý đó.</div></div>
+    <div class="intro-step"><div class="intro-num">5</div><div class="intro-text">AI <strong>kiểm tra và giải thích</strong> kết quả của bạn.</div></div>
+    <div class="intro-tip">💡 Mẹo: càng kể chi tiết bạn đã thử gì, AI càng gợi ý chính xác hơn — thay vì chỉ hỏi cộc lốc "giải giúp em bài này".</div>
+    <label class="intro-checkbox"><input type="checkbox" id="dontShowAgainCheckbox" /> Không hiển thị lại thông báo này</label>
+    <button id="introCloseBtn" class="primary-btn">Đã hiểu, bắt đầu học!</button>
+  </div>
+</div>
+
 <div id="chatLayout" style="display:none;">
   <div id="sidebarOverlay"></div>
   <aside id="sidebar">
@@ -109,13 +142,12 @@
   <div id="chatMain">
     <header class="cb-header">
       <button id="sidebarToggleBtn"><i class="fa-solid fa-bars"></i></button>
-      <div class="smart-steps" id="stepsBar"></div>
+      <button id="helpBtn"><i class="fa-solid fa-circle-question"></i> Hướng dẫn 5 bước</button>
     </header>
 
     <div id="chat"></div>
 
     <div id="inputBar">
-      <div id="status"></div>
       <div id="row2">
         <textarea id="textInput" placeholder="Nhập câu hỏi bài tập của bạn... (Enter để gửi, Shift+Enter xuống dòng)"></textarea>
         <button class="icon-btn" id="sendBtn" title="Gửi"><i class="fa-solid fa-paper-plane"></i></button>
@@ -136,23 +168,35 @@ import { db } from "./firebase-config.js";
 import {
   collection, addDoc, updateDoc, deleteDoc, doc, getDocs, query, orderBy, serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { SMART_SYSTEM_PROMPT, SMART_STEPS_VI, callAiApi } from "./smart-shared.js";
+import { SMART_SYSTEM_PROMPT, callAiApi } from "./smart-shared.js";
 
 const guard = document.getElementById("guard");
 const chatLayout = document.getElementById("chatLayout");
 const chatEl = document.getElementById('chat');
 const textInput = document.getElementById('textInput');
 const sendBtn = document.getElementById('sendBtn');
-const statusEl = document.getElementById('status');
-const stepsBar = document.getElementById('stepsBar');
 const convListEl = document.getElementById("convList");
 const newChatBtn = document.getElementById("newChatBtn");
 const sidebar = document.getElementById("sidebar");
 const sidebarOverlay = document.getElementById("sidebarOverlay");
 const sidebarToggleBtn = document.getElementById("sidebarToggleBtn");
+const introOverlay = document.getElementById("introOverlay");
+const introCloseBtn = document.getElementById("introCloseBtn");
+const dontShowAgainCheckbox = document.getElementById("dontShowAgainCheckbox");
+const helpBtn = document.getElementById("helpBtn");
 
 const nav = renderSiteNav("chatbot");
-stepsBar.innerHTML = SMART_STEPS_VI.map((s, i) => `<span title="${s.desc}">${i + 1}. ${s.label}</span>`).join("");
+
+const INTRO_KEY = "aismart_hide_chatbot_intro";
+function maybeShowIntro() {
+  if (localStorage.getItem(INTRO_KEY) === "1") return;
+  introOverlay.style.display = "flex";
+}
+introCloseBtn.onclick = () => {
+  if (dontShowAgainCheckbox.checked) localStorage.setItem(INTRO_KEY, "1");
+  introOverlay.style.display = "none";
+};
+helpBtn.onclick = () => { introOverlay.style.display = "flex"; };
 
 let currentUser = null;
 let apiConfig = null;
@@ -172,6 +216,7 @@ watchAuth(
     nav.setUser(user.email, () => logout());
     await loadConversations();
     startNewConversation();
+    maybeShowIntro();
   },
   () => { window.location.href = "index.html"; }
 );
@@ -328,16 +373,12 @@ async function logToFirestore(userText, botReply) {
 async function sendMessage(){
   const text = textInput.value.trim();
   if (!text) return;
-  if (!apiConfig || !apiConfig.apiKey) {
-    statusEl.textContent = '⚠️ Chưa có cấu hình API.';
-    return;
-  }
+  if (!apiConfig || !apiConfig.apiKey) return;
 
   addMessageToUI('user', text);
   history.push({ role: 'user', content: text });
   textInput.value = '';
   sendBtn.disabled = true;
-  statusEl.textContent = '⏳ Đang gửi yêu cầu...';
 
   const bot = addMessageToUI('bot', '...');
   bot.body.textContent = '...';
@@ -352,13 +393,11 @@ async function sendMessage(){
     const finalReply = reply || '(Không có nội dung trả về)';
     renderBotContent(bot.body, finalReply);
     history.push({ role: 'assistant', content: finalReply });
-    statusEl.textContent = '';
     logToFirestore(text, finalReply);
     await persistConversation();
   } catch (err) {
     bot.wrap.remove();
     addMessageToUI('error', 'Lỗi khi gọi API: ' + err.message);
-    statusEl.textContent = '';
   } finally {
     sendBtn.disabled = false;
   }

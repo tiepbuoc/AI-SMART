@@ -7,13 +7,18 @@ const NAV_LINKS = [
   { key: "passport", href: "passport.html", icon: "fa-route", label: "Learning Passport" },
 ];
 
+function truncateEmail(email) {
+  if (!email) return "";
+  return email.slice(0, 5) + "...";
+}
+
 function renderSiteNav(activeKey) {
   const wrap = document.createElement("div");
   wrap.innerHTML = `
     <nav id="siteNav" class="site-nav">
       <a href="index.html" class="logo">
         <div class="logo-mark"><i class="fa-solid fa-compass"></i></div>
-        <div class="logo-type">AI<em>SMART</em></div>
+        <div class="logo-type"><span class="logo-ai">AI</span><span class="logo-rest">SMART</span></div>
       </a>
 
       <div class="nav-menu">
@@ -38,6 +43,7 @@ function renderSiteNav(activeKey) {
           (l) =>
             `<a href="${l.href}" class="nav-link-mobile${l.key === activeKey ? " active" : ""}"><i class="fa-solid ${l.icon}"></i> ${l.label}</a>`
         ).join("")}
+        <div id="mobileUserEmail" class="mobile-user-email" style="display:none;"></div>
         <button id="mobileLogoutBtn" class="nav-pill-btn" style="display:none; width:100%; justify-content:center; margin-top:6px;">
           <i class="fa-solid fa-arrow-right-from-bracket"></i> Đăng xuất
         </button>
@@ -66,13 +72,18 @@ function renderSiteNav(activeKey) {
       const navEmail = document.getElementById("navUserEmail");
       const navLogoutBtn = document.getElementById("navLogoutBtn");
       const mobileLogoutBtn = document.getElementById("mobileLogoutBtn");
+      const mobileUserEmail = document.getElementById("mobileUserEmail");
       if (email) {
         navBox.style.display = "flex";
-        navEmail.textContent = email;
+        navEmail.textContent = truncateEmail(email);
+        navEmail.title = email;
         mobileLogoutBtn.style.display = "flex";
+        mobileUserEmail.style.display = "block";
+        mobileUserEmail.textContent = email;
       } else {
         navBox.style.display = "none";
         mobileLogoutBtn.style.display = "none";
+        mobileUserEmail.style.display = "none";
       }
       navLogoutBtn.onclick = onLogout;
       mobileLogoutBtn.onclick = onLogout;

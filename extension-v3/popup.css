@@ -10,7 +10,7 @@ html, body {
 }
 
 body {
-  max-height: 580px;
+  max-height: 660px;
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   background: #ffffff;
   color: #2c3e50;
@@ -27,7 +27,7 @@ body {
 }
 .resize-handle:hover, .resize-handle.active { background: rgba(230,126,34,0.25); }
 
-.app { display: flex; flex-direction: column; height: 580px; }
+.app { display: flex; flex-direction: column; height: 660px; }
 
 header {
   padding: 14px 16px 8px;
@@ -91,6 +91,10 @@ h1 { font-size: 14px; margin: 10px 0 8px; font-weight: 700; color: #2c3e50; font
   font-weight: 700;
   cursor: pointer;
   font-family: 'DM Sans', sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
 }
 .primary-btn:hover { filter: brightness(1.05); }
 
@@ -113,6 +117,9 @@ h1 { font-size: 14px; margin: 10px 0 8px; font-weight: 700; color: #2c3e50; font
   padding: 0;
   cursor: pointer;
   font-family: 'DM Sans', sans-serif;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .consent-row {
@@ -144,6 +151,10 @@ button {
   color: #2c3e50;
   font-weight: 500;
   font-family: 'DM Sans', sans-serif;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  justify-content: center;
 }
 button:hover { border-color: #e67e22; color: #d35400; }
 

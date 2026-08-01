@@ -34,7 +34,7 @@ function initSmartHint({ inputSelectors, getText, setText }) {
     const b = document.createElement("button");
     b.className = "ai-smart-bubble";
     b.textContent = "🧭";
-    b.title = "Mở gợi ý AI SMART";
+    b.title = "Kéo để di chuyển · Bấm để mở gợi ý AI SMART";
     Object.assign(b.style, {
       position: "fixed",
       zIndex: 999999,
@@ -45,15 +45,45 @@ function initSmartHint({ inputSelectors, getText, setText }) {
       background: "#e67e22",
       color: "#fff",
       fontSize: "18px",
-      cursor: "pointer",
+      cursor: "grab",
       boxShadow: "0 6px 16px rgba(230,126,34,0.4)",
       display: "none",
     });
+
+    let bubbleDragging = false;
+    let bubbleMoved = false;
+    let bubbleOffset = { x: 0, y: 0 };
+
+    b.addEventListener("mousedown", (e) => {
+      bubbleDragging = true;
+      bubbleMoved = false;
+      const rect = b.getBoundingClientRect();
+      bubbleOffset = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      b.style.cursor = "grabbing";
+      e.preventDefault();
+    });
+    window.addEventListener("mousemove", (e) => {
+      if (!bubbleDragging) return;
+      bubbleMoved = true;
+      b.style.left = Math.max(4, e.clientX - bubbleOffset.x) + "px";
+      b.style.top = Math.max(4, e.clientY - bubbleOffset.y) + "px";
+    });
+    window.addEventListener("mouseup", () => {
+      if (bubbleDragging) {
+        bubbleDragging = false;
+        b.style.cursor = "grab";
+      }
+    });
+
     b.addEventListener("click", () => {
+      if (bubbleMoved) { bubbleMoved = false; return; } // vừa kéo xong thì không mở panel
       b.style.display = "none";
       panel.style.display = "flex";
-      positionPanel();
+      const rect = b.getBoundingClientRect();
+      panelPos = { left: rect.left, top: Math.max(8, rect.top - 260) };
+      applyPos();
     });
+
     document.body.appendChild(b);
     return b;
   }
