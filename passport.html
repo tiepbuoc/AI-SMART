@@ -89,6 +89,22 @@
       <div id="tipsList"></div>
     </div>
 
+    <div class="card" id="classCard" style="margin-bottom:20px;">
+      <h3 class="section-title" style="font-size:15px;">🏫 Lớp học</h3>
+      <div id="classJoinForm" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <span style="font-size:12.5px; color:var(--text-mid);">Chưa tham gia lớp nào (không bắt buộc). Giáo viên sẽ chỉ thấy các chỉ số tổng hợp (ACI, mức rủi ro...), không thấy nội dung câu hỏi của bạn.</span>
+        <div style="display:flex; gap:8px; width:100%; margin-top:6px;">
+          <input id="classCodeInput" type="text" placeholder="Nhập mã lớp học (VD: 7K3P9Q)" maxlength="8"
+            style="flex:1; min-width:160px; padding:9px 14px; border:1.5px solid var(--border); border-radius:12px; font-size:13px; text-transform:uppercase;" />
+          <button id="joinClassBtn" style="padding:9px 16px;border:none;border-radius:12px;background:var(--orange);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;">Tham gia lớp</button>
+        </div>
+        <div id="classJoinMsg" style="font-size:12px; margin-top:4px;"></div>
+      </div>
+      <div id="classJoinedState" style="display:none; font-size:13px; color:var(--text-dark);">
+        <i class="fa-solid fa-circle-check" style="color:var(--green);"></i> Bạn đã tham gia lớp học — giáo viên có thể xem chỉ số tổng hợp của bạn.
+      </div>
+    </div>
+
     <div class="chart-row">
       <div class="card">
         <h3 class="section-title" style="font-size:15px;">Xu hướng ACI theo thời gian</h3>
@@ -148,12 +164,13 @@
 <script src="nav.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script type="module">
-import { watchAuth, getApiConfig, logout } from "./auth-web.js";
+import { watchAuth, getApiConfig, logout, getUserProfile } from "./auth-web.js";
 import { db } from "./firebase-config.js";
 import {
   collection, query, where, getDocs, doc, updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { analyzePromptsBatch, subjectCodeToLabel } from "./smart-shared.js";
+import { joinClassByCode, pushSummaryToClass } from "./classes-shared.js";
 
 const guard = document.getElementById("guard");
 const page = document.getElementById("page");
@@ -166,9 +183,52 @@ const riskFilter = document.getElementById("riskFilter");
 
 const nav = renderSiteNav("passport");
 let allWithAnalysis = [];
+let currentUid = null;
+let currentUserEmail = null;
+let currentClassId = null;
+
+const classCodeInput = document.getElementById("classCodeInput");
+const joinClassBtn = document.getElementById("joinClassBtn");
+const classJoinMsg = document.getElementById("classJoinMsg");
+const classJoinForm = document.getElementById("classJoinForm");
+const classJoinedState = document.getElementById("classJoinedState");
+
+function renderClassState() {
+  const joined = !!currentClassId;
+  classJoinForm.style.display = joined ? "none" : "flex";
+  classJoinedState.style.display = joined ? "block" : "none";
+}
+
+joinClassBtn.addEventListener("click", async () => {
+  const code = classCodeInput.value.trim();
+  if (!code) { classJoinMsg.textContent = "Vui lòng nhập mã lớp học."; classJoinMsg.style.color = "var(--red)"; return; }
+  joinClassBtn.disabled = true;
+  classJoinMsg.textContent = "Đang tham gia lớp...";
+  classJoinMsg.style.color = "var(--text-mid)";
+  try {
+    const cls = await joinClassByCode(currentUid, currentUserEmail, code);
+    currentClassId = cls.id;
+    renderClassState();
+    await syncClassSummaryIfNeeded();
+  } catch (err) {
+    classJoinMsg.textContent = err.message || "Không tham gia được lớp, thử lại nhé.";
+    classJoinMsg.style.color = "var(--red)";
+  } finally {
+    joinClassBtn.disabled = false;
+  }
+});
 
 watchAuth(
   async (user) => {
+    const profile = await getUserProfile(user.uid);
+    if (profile.role === "teacher") {
+      window.location.href = "teacher.html";
+      return;
+    }
+    currentUid = user.uid;
+    currentUserEmail = user.email;
+    currentClassId = profile.classId;
+    renderClassState();
     guard.style.display = "none";
     page.style.display = "block";
     nav.setUser(user.email, () => logout());
@@ -176,6 +236,28 @@ watchAuth(
   },
   () => { window.location.href = "index.html"; }
 );
+
+// Nếu học sinh đã tham gia lớp, tự cập nhật bản tổng hợp cho giáo viên xem
+// mỗi khi trang Passport tính xong thống kê (không gửi nội dung câu hỏi, chỉ số liệu).
+async function syncClassSummaryIfNeeded() {
+  if (!currentClassId || !currentUid) return;
+  const total = allWithAnalysis.length;
+  if (total === 0) return;
+  const avg = (key) => Math.round(allWithAnalysis.reduce((s, e) => s + (e.analysis[key] || 0), 0) / total);
+  const avgRisk = avg("riskScore");
+  try {
+    await pushSummaryToClass(currentClassId, currentUid, {
+      avgAci: avg("aci"),
+      avgEffort: avg("effort"),
+      avgComplexity: avg("complexity"),
+      entryCount: total,
+      riskBand: riskBand(avgRisk),
+      lastActive: allWithAnalysis[allWithAnalysis.length - 1].time,
+    });
+  } catch (err) {
+    console.warn("Không đồng bộ được số liệu lên lớp học:", err);
+  }
+}
 
 async function runPipeline(uid) {
   try {
@@ -221,6 +303,7 @@ async function runPipeline(uid) {
     allWithAnalysis = allEntries.filter((e) => e.analysis);
     renderDashboard();
     renderHistoryTable();
+    await syncClassSummaryIfNeeded();
 
     loadingScreen.style.display = "none";
     dashboardContent.style.display = "block";
