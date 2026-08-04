@@ -10,7 +10,7 @@
 
 import { db } from "./firebase-config.js";
 import {
-  doc, getDoc, setDoc, updateDoc, addDoc, collection,
+  doc, getDoc, setDoc, addDoc, collection,
   query, where, limit, getDocs, serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -65,7 +65,9 @@ export async function joinClassByCode(studentUid, studentEmail, code) {
     avgAci: null, avgEffort: null, avgComplexity: null, entryCount: 0,
     riskBand: null, lastActive: null,
   }, { merge: true });
-  await updateDoc(doc(db, "users", studentUid), { classId: cls.id });
+  // setDoc + merge (thay vì updateDoc) vì tài khoản tạo trước khi có tính năng phân vai trò
+  // (kể cả tài khoản tạo qua tiện ích Chrome) có thể CHƯA có document users/{uid} nào cả.
+  await setDoc(doc(db, "users", studentUid), { classId: cls.id }, { merge: true });
   return cls;
 }
 
