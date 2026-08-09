@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ACDI Check — Bảng hỏi</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="style.css" />
+<style>
+  body{ padding-top:0; }
+</style>
+</head>
+<body>
+
+<header class="acdi-header">
+  <a href="acdi-intro.html" class="logo">
+    <div class="logo-mark"><i class="fa-solid fa-gauge-high"></i></div>
+    <div class="logo-type">ACDI <span>Check</span></div>
+  </a>
+  <span class="acdi-back">Bảng hỏi ACDI</span>
+</header>
+
+<main class="acdi-wrap">
+  <div class="acdi-progress-label" id="progressLabel">Bước 2/3 · Nhóm 1/5</div>
+  <div class="acdi-progress-track"><div class="acdi-progress-fill" id="progressFill" style="width:12%"></div></div>
+
+  <div class="card">
+    <div class="acdi-group-title" id="groupTitle"></div>
+    <div class="acdi-group-desc" id="groupDesc"></div>
+    <div id="questionsWrap"></div>
+
+    <div id="groupMsg" style="font-size:12.5px; color:var(--red); min-height:16px;"></div>
+
+    <div class="acdi-nav-btns">
+      <button id="backBtn" class="acdi-btn-secondary">Quay lại</button>
+      <button id="nextBtn" class="acdi-btn-primary">Tiếp tục <i class="fa-solid fa-arrow-right"></i></button>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+import { ACDI_GROUPS, LIKERT_OPTIONS } from "./acdi-shared.js";
+
+// Bắt buộc phải hoàn thành Trang 2 (thông tin khảo sát) trước
+let info = null;
+try { info = JSON.parse(localStorage.getItem("acdi_info") || "null"); } catch { info = null; }
+if (!info || !info.consent) { window.location.href = "acdi-info.html"; }
+
+let answers = {};
+try { answers = JSON.parse(localStorage.getItem("acdi_answers") || "{}"); } catch { answers = {}; }
+
+let groupIndex = 0;
+try { groupIndex = Number(localStorage.getItem("acdi_group_index") || 0) || 0; } catch { groupIndex = 0; }
+groupIndex = Math.min(Math.max(groupIndex, 0), ACDI_GROUPS.length - 1);
+
+const groupTitleEl = document.getElementById("groupTitle");
+const groupDescEl = document.getElementById("groupDesc");
+const questionsWrap = document.getElementById("questionsWrap");
+const progressLabel = document.getElementById("progressLabel");
+const progressFill = document.getElementById("progressFill");
+const groupMsg = document.getElementById("groupMsg");
+const backBtn = document.getElementById("backBtn");
+const nextBtn = document.getElementById("nextBtn");
+
+function renderGroup() {
+  const g = ACDI_GROUPS[groupIndex];
+  groupTitleEl.textContent = `Nhóm ${groupIndex + 1}/5 · ${g.title}`;
+  groupDescEl.textContent = g.desc;
+  groupMsg.textContent = "";
+
+  questionsWrap.innerHTML = g.questions.map((q, qi) => `
+    <div class="acdi-q-block">
+      <div class="acdi-q-text">${qi + 1}. ${q.text}</div>
+      <div class="acdi-likert">
+        ${LIKERT_OPTIONS.map((o) => `
+          <label>
+            <input type="radio" name="${q.id}" value="${o.value}" ${answers[q.id] === o.value ? "checked" : ""} />
+            ${o.label}
+          </label>
+        `).join("")}
+      </div>
+    </div>
+  `).join("");
+
+  questionsWrap.querySelectorAll("input[type=radio]").forEach((inp) => {
+    inp.addEventListener("change", (e) => {
+      answers[e.target.name] = Number(e.target.value);
+      localStorage.setItem("acdi_answers", JSON.stringify(answers));
+    });
+  });
+
+  const overallStep = groupIndex + 1;
+  const pct = 12 + Math.round((overallStep / ACDI_GROUPS.length) * 55); // 3 bước lớn: info(12%) + questionnaire(~55%) + scenarios(~33%)
+  progressLabel.textContent = `Bước 2/3 · Nhóm ${overallStep}/5`;
+  progressFill.style.width = pct + "%";
+
+  backBtn.textContent = groupIndex === 0 ? "Quay lại thông tin" : "Nhóm trước";
+  nextBtn.innerHTML = groupIndex === ACDI_GROUPS.length - 1
+    ? 'Tiếp tục sang tình huống <i class="fa-solid fa-arrow-right"></i>'
+    : 'Nhóm tiếp theo <i class="fa-solid fa-arrow-right"></i>';
+}
+
+function groupComplete(g) {
+  return g.questions.every((q) => answers[q.id] !== undefined);
+}
+
+backBtn.onclick = () => {
+  if (groupIndex === 0) { window.location.href = "acdi-info.html"; return; }
+  groupIndex--;
+  localStorage.setItem("acdi_group_index", String(groupIndex));
+  renderGroup();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
+nextBtn.onclick = () => {
+  const g = ACDI_GROUPS[groupIndex];
+  if (!groupComplete(g)) {
+    groupMsg.textContent = "Vui lòng trả lời đủ tất cả câu hỏi trong nhóm này trước khi tiếp tục.";
+    return;
+  }
+  if (groupIndex === ACDI_GROUPS.length - 1) {
+    window.location.href = "acdi-scenarios.html";
+    return;
+  }
+  groupIndex++;
+  localStorage.setItem("acdi_group_index", String(groupIndex));
+  renderGroup();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
+renderGroup();
+</script>
+</body>
+</html>

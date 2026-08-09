@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ACDI Check — Đo lường mức độ lệ thuộc nhận thức vào AI</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="style.css" />
+<style>
+  body{ padding-top:0; }
+  .intro-hero{ text-align:center; padding:0 0 8px; }
+  .intro-card{ margin-top:28px; }
+  .intro-list{ display:flex; flex-direction:column; gap:14px; margin:18px 0 26px; }
+  .intro-list-item{ display:flex; gap:14px; align-items:flex-start; }
+  .intro-list-item .n{
+    width:30px; height:30px; flex:none; border-radius:50%; background:var(--orange-pale); color:var(--orange2);
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;
+  }
+  .intro-list-item p{ font-size:13.5px; color:var(--text-mid); line-height:1.6; margin-top:4px; }
+  .intro-list-item strong{ color:var(--text-dark); }
+  .privacy-box{
+    background:var(--green-pale); border:1px solid rgba(31,157,108,0.25); border-radius:16px; padding:16px 18px;
+    font-size:12.5px; color:var(--text-dark); line-height:1.6; margin-bottom:24px;
+  }
+  .privacy-box i{ color:var(--green); margin-right:6px; }
+</style>
+</head>
+<body>
+
+<header class="acdi-header">
+  <a href="index.html" class="logo">
+    <div class="logo-mark"><i class="fa-solid fa-gauge-high"></i></div>
+    <div class="logo-type">ACDI <span>Check</span></div>
+  </a>
+  <a href="index.html" class="acdi-back"><i class="fa-solid fa-arrow-left"></i> Về trang chủ AI SMART</a>
+</header>
+
+<main class="acdi-wrap">
+  <section class="intro-hero">
+    <div class="hero-eyebrow"><i class="fa-solid fa-flask"></i> Công cụ nghiên cứu độc lập</div>
+    <h1 class="hero-h1">ACDI <em>Check</em></h1>
+    <p class="hero-sub">Đo lường <strong>Chỉ số lệ thuộc nhận thức vào AI</strong> (AI Cognitive Dependency Index) — không phải theo dõi bạn dùng AI bao nhiêu lần, mà xem AI có đang thay bạn suy nghĩ hay không.</p>
+  </section>
+
+  <div class="card intro-card">
+    <div class="section-label"><i class="fa-solid fa-circle-info"></i> Về ACDI Check</div>
+    <p style="font-size:13.5px; color:var(--text-mid); line-height:1.7; margin-bottom:20px;">
+      Khác với các công cụ theo dõi tần suất sử dụng AI, <strong>ACDI Check</strong> tập trung đánh giá việc AI có đang
+      thay thế các hoạt động tư duy của bạn hay không — như tự hình thành ý tưởng, phân tích vấn đề, kiểm chứng
+      thông tin, giải thích kết quả và thực hiện nhiệm vụ khi không có AI.
+    </p>
+
+    <div class="intro-list">
+      <div class="intro-list-item">
+        <div class="n">1</div>
+        <div><strong>Bảng hỏi ACDI</strong><p>25 câu hỏi ngắn về thói quen dùng AI trong học tập, trả lời theo thang 5 mức độ.</p></div>
+      </div>
+      <div class="intro-list-item">
+        <div class="n">2</div>
+        <div><strong>Nhiệm vụ tình huống</strong><p>5 tình huống ngắn kiểm tra khả năng phát hiện lỗi, kiểm chứng nguồn và tự giải quyết vấn đề.</p></div>
+      </div>
+      <div class="intro-list-item">
+        <div class="n">3</div>
+        <div><strong>Kết quả & khuyến nghị</strong><p>Điểm ACDI (0–100), mức độ lệ thuộc AI, biểu đồ theo từng nhóm chỉ báo và gợi ý điều chỉnh phù hợp với bạn.</p></div>
+      </div>
+    </div>
+
+    <div class="privacy-box">
+      <i class="fa-solid fa-shield-heart"></i><strong>Bảo mật dữ liệu:</strong> Khảo sát hoàn toàn ẩn danh — không thu thập họ tên, số điện thoại hay bất kỳ thông tin định danh nào của bạn. Hệ thống chỉ tạo một mã tham gia ngẫu nhiên để bạn có thể tự lưu lại nếu muốn làm lại khảo sát sau này.
+    </div>
+
+    <a href="acdi-info.html" class="primary-btn" style="display:block; text-align:center; text-decoration:none;">
+      Bắt đầu khảo sát <i class="fa-solid fa-arrow-right"></i>
+    </a>
+  </div>
+</main>
+
+</body>
+</html>

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ACDI Check — Kết quả của bạn</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="style.css" />
+<style>
+  body{ padding-top:0; }
+  .result-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; margin:20px 0; }
+  .insight-row{ display:flex; gap:14px; flex-wrap:wrap; margin:18px 0; }
+  .insight-box{ flex:1; min-width:220px; border-radius:16px; padding:16px 18px; font-size:13px; line-height:1.6; }
+  .insight-box.risk{ background:var(--red-pale); color:var(--text-dark); }
+  .insight-box.strong{ background:var(--green-pale); color:var(--text-dark); }
+  .insight-box .label{ font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:6px; }
+  .insight-box.risk .label{ color:var(--red); }
+  .insight-box.strong .label{ color:var(--green); }
+  .tip-box{ background:var(--orange-pale); border:1px solid var(--border); border-radius:16px; padding:16px 18px; font-size:13.5px; line-height:1.6; color:var(--text-dark); }
+  @media (max-width:700px){ .result-grid{ grid-template-columns:1fr; } }
+  #loadingState{ text-align:center; padding:60px 0; color:var(--text-mid); }
+</style>
+</head>
+<body>
+
+<header class="acdi-header">
+  <a href="acdi-intro.html" class="logo">
+    <div class="logo-mark"><i class="fa-solid fa-gauge-high"></i></div>
+    <div class="logo-type">ACDI <span>Check</span></div>
+  </a>
+  <span class="acdi-back">Kết quả</span>
+</header>
+
+<main class="acdi-wrap">
+  <div id="loadingState"><i class="fa-solid fa-spinner fa-spin"></i> Đang tính điểm ACDI của bạn...</div>
+
+  <div id="resultContent" style="display:none;">
+    <div class="card">
+      <div class="acdi-gauge-wrap">
+        <div class="acdi-gauge-score" id="acdiScore">--</div>
+        <div style="font-size:12px; color:var(--text-mid);">Điểm ACDI / 100</div>
+        <div class="acdi-gauge-level" id="acdiLevelBadge"></div>
+        <div class="acdi-gauge-range" id="acdiLevelRange"></div>
+      </div>
+      <p style="font-size:13px; color:var(--text-mid); text-align:center; line-height:1.6; max-width:520px; margin:0 auto;" id="acdiLevelDesc"></p>
+    </div>
+
+    <div class="card" style="margin-top:18px;">
+      <h3 class="section-title" style="font-size:15px;">Biểu đồ theo 5 nhóm chỉ báo</h3>
+      <canvas id="radarChart" height="240"></canvas>
+    </div>
+
+    <div class="insight-row">
+      <div class="insight-box risk">
+        <div class="label"><i class="fa-solid fa-triangle-exclamation"></i> Nhóm cần chú ý nhất</div>
+        <div id="highestGroupText"></div>
+      </div>
+      <div class="insight-box strong">
+        <div class="label"><i class="fa-solid fa-circle-check"></i> Nhóm năng lực duy trì tốt nhất</div>
+        <div id="lowestGroupText"></div>
+      </div>
+    </div>
+
+    <div class="tip-box">
+      <strong>Khuyến nghị dành cho bạn:</strong>
+      <p id="tipText" style="margin-top:6px;"></p>
+    </div>
+
+    <div class="card" style="margin-top:18px; text-align:center;">
+      <div style="font-size:12px; color:var(--text-mid); margin-bottom:8px;">Mã tham gia của bạn</div>
+      <div class="acdi-code-box" id="participantCodeBox" style="display:inline-block;">--------</div>
+      <p style="font-size:11.5px; color:var(--text-dim); margin-top:10px;">Lưu lại mã này nếu bạn muốn làm lại khảo sát để so sánh kết quả trước/sau.</p>
+    </div>
+
+    <div class="acdi-nav-btns" style="margin-top:24px;">
+      <a href="acdi-intro.html" class="acdi-btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center;">Về trang giới thiệu</a>
+      <button id="retakeBtn" class="acdi-btn-primary">Làm khảo sát mới <i class="fa-solid fa-rotate-right"></i></button>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script type="module">
+import {
+  ACDI_GROUPS, computeDimensionScores, computeQuestionnaireScore,
+  computeScenarioScores, computeAcdiScore, classifyLevel, LEVEL_INFO,
+  buildRecommendation, saveAssessment,
+} from "./acdi-shared.js";
+
+const loadingState = document.getElementById("loadingState");
+const resultContent = document.getElementById("resultContent");
+
+async function run() {
+  let info, answers, scenarioAnswers;
+  try { info = JSON.parse(localStorage.getItem("acdi_info") || "null"); } catch { info = null; }
+  try { answers = JSON.parse(localStorage.getItem("acdi_answers") || "{}"); } catch { answers = {}; }
+  try { scenarioAnswers = JSON.parse(localStorage.getItem("acdi_scenarios") || "{}"); } catch { scenarioAnswers = {}; }
+
+  if (!info || !info.consent) { window.location.href = "acdi-info.html"; return; }
+  if (Object.keys(answers).length === 0) { window.location.href = "acdi-questionnaire.html"; return; }
+  if (Object.keys(scenarioAnswers).length === 0) { window.location.href = "acdi-scenarios.html"; return; }
+
+  const dimensionScores = computeDimensionScores(answers);
+  const questionnaireScore = computeQuestionnaireScore(dimensionScores);
+  const { perScenario, overall: scenarioScore } = computeScenarioScores(scenarioAnswers);
+  const acdiScore = computeAcdiScore(questionnaireScore, scenarioScore);
+  const level = classifyLevel(acdiScore);
+  const rec = buildRecommendation(dimensionScores);
+
+  // Chỉ lưu vào Firestore một lần cho mỗi lần hoàn thành khảo sát (tránh trùng khi tải lại trang)
+  let cached = null;
+  try { cached = JSON.parse(sessionStorage.getItem("acdi_saved_result") || "null"); } catch { cached = null; }
+  if (!cached || cached.participantCode !== info.participantCode) {
+    try {
+      await saveAssessment({
+        participantCode: info.participantCode,
+        schoolLevel: info.schoolLevel,
+        grade: info.grade,
+        aiFrequency: info.aiFrequency,
+        purposes: info.purposes,
+        subjects: info.subjects,
+        questionnaireScores: answers,
+        scenarioScores: perScenario,
+        dimensionScores,
+        acdiScore,
+        acdiLevel: level,
+        consent: true,
+      });
+      sessionStorage.setItem("acdi_saved_result", JSON.stringify({ participantCode: info.participantCode }));
+    } catch (err) {
+      console.warn("Không lưu được kết quả lên hệ thống:", err);
+    }
+  }
+
+  renderResult({ info, dimensionScores, acdiScore, level, rec });
+}
+
+function renderResult({ info, dimensionScores, acdiScore, level, rec }) {
+  const li = LEVEL_INFO[level];
+  document.getElementById("acdiScore").textContent = acdiScore;
+  document.getElementById("acdiLevelBadge").textContent = `Mức ${level} · ${li.title}`;
+  document.getElementById("acdiLevelBadge").style.background = li.color;
+  document.getElementById("acdiLevelRange").textContent = `Khoảng điểm dự kiến: ${li.range}`;
+  document.getElementById("acdiLevelDesc").textContent = li.desc;
+
+  document.getElementById("highestGroupText").textContent = rec.highestRiskGroup;
+  document.getElementById("lowestGroupText").textContent = rec.bestMaintainedGroup;
+  document.getElementById("tipText").textContent = rec.tip;
+  document.getElementById("participantCodeBox").textContent = info.participantCode;
+
+  new Chart(document.getElementById("radarChart"), {
+    type: "radar",
+    data: {
+      labels: ACDI_GROUPS.map((g) => g.title),
+      datasets: [{
+        label: "Mức lệ thuộc (0-100)",
+        data: ACDI_GROUPS.map((g) => dimensionScores[g.key]),
+        backgroundColor: "rgba(230,126,34,0.18)",
+        borderColor: "#e67e22",
+        pointBackgroundColor: "#e67e22",
+      }],
+    },
+    options: {
+      scales: { r: { min: 0, max: 100, ticks: { display: false }, pointLabels: { font: { size: 10.5 } } } },
+      plugins: { legend: { display: false } },
+    },
+  });
+
+  loadingState.style.display = "none";
+  resultContent.style.display = "block";
+}
+
+document.getElementById("retakeBtn").onclick = () => {
+  ["acdi_info", "acdi_answers", "acdi_group_index", "acdi_scenarios", "acdi_scenario_index"].forEach((k) => localStorage.removeItem(k));
+  sessionStorage.removeItem("acdi_saved_result");
+  window.location.href = "acdi-info.html";
+};
+
+run();
+</script>
+</body>
+</html>

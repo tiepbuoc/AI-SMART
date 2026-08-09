@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ACDI Check — Trang quản trị nghiên cứu</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="style.css" />
+<style>
+  body{ padding-top:0; }
+  .stat-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:20px 0; }
+  .stat-card{ background:var(--card-bg); border:1.5px solid var(--border); border-radius:20px; padding:18px 20px; }
+  .stat-card .num{ font-family:'Fraunces',serif; font-size:26px; font-weight:600; color:var(--orange2); }
+  .stat-card .label{ font-size:11px; color:var(--text-mid); margin-top:4px; }
+  .filter-row{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+  .filter-row select{ padding:9px 12px; border:1.5px solid var(--border); border-radius:12px; font-size:12.5px; font-family:'DM Sans',sans-serif; }
+  table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  th,td{ text-align:left; padding:9px 8px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  th{ font-size:10.5px; color:var(--text-mid); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; }
+  .pill{ font-size:10.5px; font-weight:700; padding:3px 10px; border-radius:999px; color:#fff; }
+  .table-scroll{ overflow-x:auto; }
+  .export-btn{
+    padding:9px 18px; border:1.5px solid var(--border); border-radius:12px; background:#fff;
+    font-size:12.5px; font-weight:700; color:var(--text-dark); cursor:pointer; display:inline-flex; gap:8px; align-items:center;
+  }
+  .export-btn:hover{ border-color:var(--orange); color:var(--orange2); }
+  @media (max-width:800px){ .stat-grid{ grid-template-columns:repeat(2,1fr); } }
+</style>
+</head>
+<body>
+
+<header class="acdi-header">
+  <a href="acdi-intro.html" class="logo">
+    <div class="logo-mark"><i class="fa-solid fa-gauge-high"></i></div>
+    <div class="logo-type">ACDI <span>Check</span></div>
+  </a>
+  <span class="acdi-back">Trang quản trị nghiên cứu</span>
+</header>
+
+<main class="acdi-wrap" style="max-width:1100px;">
+
+  <div id="loginScreen" class="auth-screen" style="min-height:60vh; padding:0;">
+    <div class="auth-card">
+      <h1>Đăng nhập quản trị</h1>
+      <p class="subtitle">Chỉ tài khoản thuộc nhóm nghiên cứu mới được truy cập dữ liệu khảo sát.</p>
+      <input id="adminEmail" type="email" placeholder="Email" autocomplete="username" />
+      <input id="adminPassword" type="password" placeholder="Mật khẩu" autocomplete="current-password" />
+      <button id="adminLoginBtn" class="primary-btn">Đăng nhập</button>
+      <div id="adminMsg" class="auth-message"></div>
+    </div>
+  </div>
+
+  <div id="dashboard" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+      <h2 class="section-title" style="margin:0;">Dữ liệu khảo sát ACDI</h2>
+      <button id="logoutBtn" class="acdi-btn-secondary"><i class="fa-solid fa-arrow-right-from-bracket"></i> Đăng xuất</button>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card"><div class="num" id="statCount">-</div><div class="label">Người tham gia</div></div>
+      <div class="stat-card"><div class="num" id="statAvg">-</div><div class="label">ACDI trung bình</div></div>
+      <div class="stat-card"><div class="num" id="statHighRisk">-</div><div class="label">Mức 3–4 (lệ thuộc)</div></div>
+      <div class="stat-card"><div class="num" id="statLowRisk">-</div><div class="label">Mức 1 (kiểm soát tốt)</div></div>
+    </div>
+
+    <div class="card">
+      <div class="filter-row">
+        <select id="filterLevel">
+          <option value="">Tất cả cấp học</option>
+          <option value="thcs">THCS</option>
+          <option value="thpt">THPT</option>
+        </select>
+        <select id="filterGrade">
+          <option value="">Tất cả khối lớp</option>
+        </select>
+        <button class="export-btn" id="exportBtn"><i class="fa-solid fa-file-csv"></i> Xuất CSV</button>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>Mã tham gia</th><th>Cấp học</th><th>Khối</th><th>Tần suất dùng AI</th><th>Điểm ACDI</th><th>Mức</th><th>Thời gian</th></tr>
+          </thead>
+          <tbody id="rowsBody"></tbody>
+        </table>
+        <div id="emptyState" class="empty-state" style="display:none; text-align:center; padding:30px; color:var(--text-mid); font-size:13px;">Chưa có dữ liệu khảo sát nào.</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script type="module">
+import { auth } from "./firebase-config.js";
+import {
+  onAuthStateChanged, signInWithEmailAndPassword, signOut,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { isResearchAdmin, listAssessments, LEVEL_INFO } from "./acdi-shared.js";
+
+const loginScreen = document.getElementById("loginScreen");
+const dashboard = document.getElementById("dashboard");
+const adminEmail = document.getElementById("adminEmail");
+const adminPassword = document.getElementById("adminPassword");
+const adminMsg = document.getElementById("adminMsg");
+
+const FRIENDLY_ERR = {
+  "auth/invalid-credential": "Email hoặc mật khẩu không đúng.",
+  "auth/user-not-found": "Tài khoản không tồn tại.",
+  "auth/wrong-password": "Sai mật khẩu.",
+  "auth/too-many-requests": "Bạn thử sai quá nhiều lần, vui lòng thử lại sau.",
+};
+
+document.getElementById("adminLoginBtn").onclick = async () => {
+  adminMsg.textContent = "";
+  const email = adminEmail.value.trim();
+  const password = adminPassword.value;
+  if (!email || !password) { adminMsg.textContent = "Vui lòng nhập đầy đủ email và mật khẩu."; return; }
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (err) {
+    adminMsg.textContent = FRIENDLY_ERR[err.code] || "Có lỗi xảy ra, vui lòng thử lại.";
+  }
+};
+
+document.getElementById("logoutBtn").onclick = () => signOut(auth);
+
+let allRows = [];
+
+const filterGradeEl = document.getElementById("filterGrade");
+filterGradeEl.innerHTML = `<option value="">Tất cả khối lớp</option>` +
+  [6, 7, 8, 9, 10, 11, 12].map((g) => `<option value="${g}">Lớp ${g}</option>`).join("");
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    loginScreen.style.display = "flex";
+    dashboard.style.display = "none";
+    return;
+  }
+  const allowed = await isResearchAdmin(user.uid);
+  if (!allowed) {
+    adminMsg.textContent = "Tài khoản này chưa được cấp quyền truy cập trang quản trị.";
+    await signOut(auth);
+    return;
+  }
+  loginScreen.style.display = "none";
+  dashboard.style.display = "block";
+  allRows = await listAssessments();
+  renderDashboard();
+});
+
+function levelPillColor(level) {
+  return LEVEL_INFO[level]?.color || "#95a5a6";
+}
+function formatTime(ts) {
+  if (!ts) return "-";
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  if (isNaN(d.getTime())) return "-";
+  return d.toLocaleString("vi-VN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+function currentFilters() {
+  return {
+    level: document.getElementById("filterLevel").value,
+    grade: document.getElementById("filterGrade").value,
+  };
+}
+
+function filteredRows() {
+  const { level, grade } = currentFilters();
+  return allRows.filter((r) => (!level || r.schoolLevel === level) && (!grade || String(r.grade) === grade));
+}
+
+function renderDashboard() {
+  const rows = filteredRows();
+  document.getElementById("statCount").textContent = rows.length;
+  const avg = rows.length ? (rows.reduce((s, r) => s + (r.acdiScore || 0), 0) / rows.length).toFixed(1) : "-";
+  document.getElementById("statAvg").textContent = avg;
+  document.getElementById("statHighRisk").textContent = rows.filter((r) => r.acdiLevel >= 3).length;
+  document.getElementById("statLowRisk").textContent = rows.filter((r) => r.acdiLevel === 1).length;
+
+  const rowsBody = document.getElementById("rowsBody");
+  const emptyState = document.getElementById("emptyState");
+  if (rows.length === 0) {
+    rowsBody.innerHTML = "";
+    emptyState.style.display = "block";
+    return;
+  }
+  emptyState.style.display = "none";
+  const freqLabel = { daily: "Mỗi ngày", often: "Vài lần/tuần", sometimes: "Thỉnh thoảng", rarely: "Hiếm khi" };
+  rowsBody.innerHTML = rows.map((r) => `
+    <tr>
+      <td>${r.participantCode || "-"}</td>
+      <td>${(r.schoolLevel || "-").toUpperCase()}</td>
+      <td>${r.grade || "-"}</td>
+      <td>${freqLabel[r.aiFrequency] || r.aiFrequency || "-"}</td>
+      <td>${r.acdiScore ?? "-"}</td>
+      <td><span class="pill" style="background:${levelPillColor(r.acdiLevel)}">Mức ${r.acdiLevel ?? "-"}</span></td>
+      <td>${formatTime(r.createdAt)}</td>
+    </tr>
+  `).join("");
+}
+
+document.getElementById("filterLevel").addEventListener("change", renderDashboard);
+document.getElementById("filterGrade").addEventListener("change", renderDashboard);
+
+document.getElementById("exportBtn").onclick = () => {
+  const rows = filteredRows().map((r) => ({
+    participantCode: r.participantCode,
+    schoolLevel: r.schoolLevel,
+    grade: r.grade,
+    aiFrequency: r.aiFrequency,
+    acdiScore: r.acdiScore,
+    acdiLevel: r.acdiLevel,
+    createdAt: formatTime(r.createdAt),
+  }));
+  const csv = Papa.unparse(rows);
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `acdi-check-data-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+</script>
+</body>
+</html>

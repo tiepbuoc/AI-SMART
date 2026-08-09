@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ACDI Check — Tình huống tư duy</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="style.css" />
+<style>
+  body{ padding-top:0; }
+</style>
+</head>
+<body>
+
+<header class="acdi-header">
+  <a href="acdi-intro.html" class="logo">
+    <div class="logo-mark"><i class="fa-solid fa-gauge-high"></i></div>
+    <div class="logo-type">ACDI <span>Check</span></div>
+  </a>
+  <span class="acdi-back">Tình huống tư duy</span>
+</header>
+
+<main class="acdi-wrap">
+  <div class="acdi-progress-label" id="progressLabel">Bước 3/3 · Tình huống 1/5</div>
+  <div class="acdi-progress-track"><div class="acdi-progress-fill" id="progressFill" style="width:67%"></div></div>
+
+  <div class="card">
+    <div class="acdi-group-title" id="scTitle"></div>
+    <div class="acdi-scenario-box" id="scBox"></div>
+    <div class="acdi-q-text" id="scQuestion" style="font-weight:600;"></div>
+    <div id="scAnswerWrap"></div>
+
+    <div id="scMsg" style="font-size:12.5px; color:var(--red); min-height:16px; margin-top:10px;"></div>
+
+    <div class="acdi-nav-btns">
+      <button id="backBtn" class="acdi-btn-secondary">Quay lại</button>
+      <button id="nextBtn" class="acdi-btn-primary">Tiếp tục <i class="fa-solid fa-arrow-right"></i></button>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+import { SCENARIOS } from "./acdi-shared.js";
+
+let info = null;
+try { info = JSON.parse(localStorage.getItem("acdi_info") || "null"); } catch { info = null; }
+if (!info || !info.consent) { window.location.href = "acdi-info.html"; }
+
+let scenarioAnswers = {};
+try { scenarioAnswers = JSON.parse(localStorage.getItem("acdi_scenarios") || "{}"); } catch { scenarioAnswers = {}; }
+
+let idx = 0;
+try { idx = Number(localStorage.getItem("acdi_scenario_index") || 0) || 0; } catch { idx = 0; }
+idx = Math.min(Math.max(idx, 0), SCENARIOS.length - 1);
+
+const scTitle = document.getElementById("scTitle");
+const scBox = document.getElementById("scBox");
+const scQuestion = document.getElementById("scQuestion");
+const scAnswerWrap = document.getElementById("scAnswerWrap");
+const scMsg = document.getElementById("scMsg");
+const progressLabel = document.getElementById("progressLabel");
+const progressFill = document.getElementById("progressFill");
+const backBtn = document.getElementById("backBtn");
+const nextBtn = document.getElementById("nextBtn");
+
+function saveAnswer(value) {
+  scenarioAnswers[SCENARIOS[idx].id] = value;
+  localStorage.setItem("acdi_scenarios", JSON.stringify(scenarioAnswers));
+}
+
+function render() {
+  const sc = SCENARIOS[idx];
+  scTitle.textContent = sc.title;
+  scBox.innerHTML = `${sc.prompt}${sc.aiAnswer ? `<div class="ai-answer">${sc.aiAnswer}</div>` : ""}`;
+  scQuestion.textContent = sc.question;
+  scMsg.textContent = "";
+
+  const existing = scenarioAnswers[sc.id];
+
+  if (sc.type === "choice") {
+    scAnswerWrap.innerHTML = `<div class="acdi-choice-list">${sc.options.map((o) => `
+      <label>
+        <input type="radio" name="scChoice" value="${o.id}" ${existing === o.id ? "checked" : ""} />
+        <span>${o.text}</span>
+      </label>
+    `).join("")}</div>`;
+    scAnswerWrap.querySelectorAll("input[type=radio]").forEach((inp) => {
+      inp.addEventListener("change", (e) => saveAnswer(e.target.value));
+    });
+  } else if (sc.type === "text") {
+    scAnswerWrap.innerHTML = `<textarea class="acdi-textarea" id="scText" placeholder="Viết câu trả lời của bạn ở đây...">${existing || ""}</textarea>`;
+    document.getElementById("scText").addEventListener("input", (e) => saveAnswer(e.target.value));
+  } else if (sc.type === "number") {
+    scAnswerWrap.innerHTML = `<input type="number" class="acdi-number-input" id="scNumber" placeholder="Nhập câu trả lời..." value="${existing ?? ""}" />`;
+    document.getElementById("scNumber").addEventListener("input", (e) => saveAnswer(e.target.value));
+  }
+
+  const pct = 67 + Math.round(((idx + 1) / SCENARIOS.length) * 33);
+  progressLabel.textContent = `Bước 3/3 · Tình huống ${idx + 1}/5`;
+  progressFill.style.width = pct + "%";
+
+  backBtn.textContent = idx === 0 ? "Quay lại bảng hỏi" : "Tình huống trước";
+  nextBtn.innerHTML = idx === SCENARIOS.length - 1
+    ? 'Xem kết quả <i class="fa-solid fa-flag-checkered"></i>'
+    : 'Tình huống tiếp theo <i class="fa-solid fa-arrow-right"></i>';
+}
+
+function isAnswered(sc) {
+  const v = scenarioAnswers[sc.id];
+  if (sc.type === "text") return typeof v === "string" && v.trim().length > 0;
+  if (sc.type === "number") return v !== undefined && v !== null && String(v).trim() !== "";
+  return v !== undefined && v !== null;
+}
+
+backBtn.onclick = () => {
+  if (idx === 0) { window.location.href = "acdi-questionnaire.html"; return; }
+  idx--;
+  localStorage.setItem("acdi_scenario_index", String(idx));
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
+nextBtn.onclick = () => {
+  const sc = SCENARIOS[idx];
+  if (!isAnswered(sc)) {
+    scMsg.textContent = "Vui lòng trả lời tình huống này trước khi tiếp tục.";
+    return;
+  }
+  if (idx === SCENARIOS.length - 1) {
+    window.location.href = "acdi-results.html";
+    return;
+  }
+  idx++;
+  localStorage.setItem("acdi_scenario_index", String(idx));
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
+render();
+</script>
+</body>
+</html>
