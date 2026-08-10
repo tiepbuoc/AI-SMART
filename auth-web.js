@@ -65,8 +65,8 @@ export async function getUserProfile(uid) {
 // ---- Cấu hình API cố định (theo yêu cầu, không cần trang Cài đặt nữa) ----
 const FIXED_API_CONFIG = {
   endpoint: "https://api.shopaikey.com/v1",
-  model: "gpt-5.4-nano",
-  apiKey: "sk-4150297863e3eee405805e8609648e6c5cebb1b502ffb46e",
+  model: "gpt-5.4-nano-2026-03-17",
+  apiKey: "sk-uQmI5tk7o5FdWLq852gCLO2xZTd5OmG2K9RKy7C3raEqGx6v",
 };
 
 export async function getApiConfig() {
