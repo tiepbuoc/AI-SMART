@@ -35,7 +35,7 @@
 <script src="nav.js"></script>
 <script type="module">
 import { watchAuth, logout, getUserProfile } from "./auth-web.js";
-import { SCENARIOS } from "./acdi-shared.js";
+import { DEFAULT_SCENARIOS } from "./acdi-shared.js";
 
 const guard = document.getElementById("guard");
 const page = document.getElementById("page");
@@ -44,6 +44,10 @@ const nav = renderSiteNav("acdi");
 let info = null;
 try { info = JSON.parse(localStorage.getItem("acdi_info") || "null"); } catch { info = null; }
 if (!info || !info.consent) { window.location.href = "acdi-info.html"; }
+
+let test = null;
+try { test = JSON.parse(localStorage.getItem("acdi_test") || "null"); } catch { test = null; }
+const SCENARIOS = (test && Array.isArray(test.scenarios) && test.scenarios.length === 5) ? test.scenarios : DEFAULT_SCENARIOS;
 
 let scenarioAnswers = {};
 try { scenarioAnswers = JSON.parse(localStorage.getItem("acdi_scenarios") || "{}"); } catch { scenarioAnswers = {}; }

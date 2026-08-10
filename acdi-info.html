@@ -96,7 +96,7 @@
 <script src="nav.js"></script>
 <script type="module">
 import { watchAuth, logout, getUserProfile } from "./auth-web.js";
-import { generateParticipantCode } from "./acdi-shared.js";
+import { generateParticipantCode, getOrGenerateAcdiTest } from "./acdi-shared.js";
 
 const guard = document.getElementById("guard");
 const page = document.getElementById("page");
@@ -136,7 +136,9 @@ if (existing) {
 
 let participantCode = existing?.participantCode || null;
 
-document.getElementById("continueBtn").onclick = () => {
+const continueBtn = document.getElementById("continueBtn");
+
+continueBtn.onclick = async () => {
   const consent = document.getElementById("consentCheck").checked;
   if (!consent) {
     infoMsg.textContent = "Vui lòng xác nhận đồng ý tham gia khảo sát để tiếp tục.";
@@ -157,7 +159,24 @@ document.getElementById("continueBtn").onclick = () => {
     purposes, subjects, consent: true, participantCode,
   };
   localStorage.setItem("acdi_info", JSON.stringify(info));
-  window.location.href = "acdi-questionnaire.html";
+
+  // Lấy bộ đề (bảng hỏi + tình huống) — ưu tiên đề đã có sẵn trong hệ thống cho đúng tiêu chí
+  // (cấp học + khối lớp + môn học) để tiết kiệm chi phí gọi AI; chỉ soạn đề mới bằng AI nếu
+  // chưa từng có ai làm khảo sát với tiêu chí này.
+  infoMsg.style.color = "var(--text-mid)";
+  infoMsg.textContent = "Đang chuẩn bị đề khảo sát phù hợp với bạn...";
+  continueBtn.disabled = true;
+  try {
+    const test = await getOrGenerateAcdiTest({ schoolLevel: info.schoolLevel, grade: info.grade, subjects });
+    localStorage.setItem("acdi_test", JSON.stringify(test));
+    infoMsg.textContent = "";
+    window.location.href = "acdi-questionnaire.html";
+  } catch (err) {
+    console.warn("Không chuẩn bị được đề khảo sát:", err);
+    infoMsg.style.color = "var(--red)";
+    infoMsg.textContent = "Có lỗi khi chuẩn bị đề khảo sát, vui lòng thử lại.";
+    continueBtn.disabled = false;
+  }
 };
 
 watchAuth(

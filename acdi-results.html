@@ -79,7 +79,7 @@
 <script type="module">
 import { watchAuth, logout, getUserProfile } from "./auth-web.js";
 import {
-  ACDI_GROUPS, computeDimensionScores, computeQuestionnaireScore,
+  DEFAULT_ACDI_GROUPS, DEFAULT_SCENARIOS, computeDimensionScores, computeQuestionnaireScore,
   computeScenarioScores, computeAcdiScore, classifyLevel, LEVEL_INFO,
   buildRecommendation, saveAssessment,
 } from "./acdi-shared.js";
@@ -91,36 +91,49 @@ const loadingState = document.getElementById("loadingState");
 const resultContent = document.getElementById("resultContent");
 
 async function run(user) {
-  let info, answers, scenarioAnswers;
+  let info, answers, scenarioAnswers, test;
   try { info = JSON.parse(localStorage.getItem("acdi_info") || "null"); } catch { info = null; }
   try { answers = JSON.parse(localStorage.getItem("acdi_answers") || "{}"); } catch { answers = {}; }
   try { scenarioAnswers = JSON.parse(localStorage.getItem("acdi_scenarios") || "{}"); } catch { scenarioAnswers = {}; }
+  try { test = JSON.parse(localStorage.getItem("acdi_test") || "null"); } catch { test = null; }
 
   if (!info || !info.consent) { window.location.href = "acdi-info.html"; return; }
   if (Object.keys(answers).length === 0) { window.location.href = "acdi-questionnaire.html"; return; }
   if (Object.keys(scenarioAnswers).length === 0) { window.location.href = "acdi-scenarios.html"; return; }
 
-  const dimensionScores = computeDimensionScores(answers);
+  const groups = (test && Array.isArray(test.groups) && test.groups.length === 5) ? test.groups : DEFAULT_ACDI_GROUPS;
+  const scenarios = (test && Array.isArray(test.scenarios) && test.scenarios.length === 5) ? test.scenarios : DEFAULT_SCENARIOS;
+
+  const dimensionScores = computeDimensionScores(answers, groups);
   const questionnaireScore = computeQuestionnaireScore(dimensionScores);
-  const { perScenario, overall: scenarioScore } = computeScenarioScores(scenarioAnswers);
+
+  // Phần tự luận (tình huống dạng "text") được CHẤM BẰNG AI ở đây theo rubric cố định;
+  // các tình huống trắc nghiệm/số vẫn chấm bằng công thức cố định. Điểm ACDI tổng luôn được
+  // tính lại bằng công thức cố định (computeAcdiScore) — AI không quyết định điểm tổng.
+  loadingState.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang chấm điểm phần tự luận và tính điểm ACDI của bạn...';
+  const { perScenario, overall: scenarioScore } = await computeScenarioScores(scenarioAnswers, scenarios);
+
   const acdiScore = computeAcdiScore(questionnaireScore, scenarioScore);
   const level = classifyLevel(acdiScore);
-  const rec = buildRecommendation(dimensionScores);
+  const rec = buildRecommendation(dimensionScores, groups);
 
   // Chỉ lưu vào Firestore một lần cho mỗi lần hoàn thành khảo sát (tránh trùng khi tải lại trang)
   let cached = null;
   try { cached = JSON.parse(sessionStorage.getItem("acdi_saved_result") || "null"); } catch { cached = null; }
   if (!cached || cached.participantCode !== info.participantCode) {
     try {
+      const profile = await getUserProfile(user.uid);
       await saveAssessment({
         studentUid: user.uid,
         studentEmail: user.email,
+        classId: profile.classId || null, // dùng để giáo viên xem thống kê TỔNG HỢP theo lớp, không lộ danh tính
         participantCode: info.participantCode,
         schoolLevel: info.schoolLevel,
         grade: info.grade,
         aiFrequency: info.aiFrequency,
         purposes: info.purposes,
         subjects: info.subjects,
+        testKey: test?.testKey || null,
         questionnaireScores: answers,
         scenarioScores: perScenario,
         dimensionScores,
@@ -134,10 +147,10 @@ async function run(user) {
     }
   }
 
-  renderResult({ info, dimensionScores, acdiScore, level, rec });
+  renderResult({ info, groups, dimensionScores, acdiScore, level, rec });
 }
 
-function renderResult({ info, dimensionScores, acdiScore, level, rec }) {
+function renderResult({ info, groups, dimensionScores, acdiScore, level, rec }) {
   const li = LEVEL_INFO[level];
   document.getElementById("acdiScore").textContent = acdiScore;
   document.getElementById("acdiLevelBadge").textContent = `Mức ${level} · ${li.title}`;
@@ -153,10 +166,10 @@ function renderResult({ info, dimensionScores, acdiScore, level, rec }) {
   new Chart(document.getElementById("radarChart"), {
     type: "radar",
     data: {
-      labels: ACDI_GROUPS.map((g) => g.title),
+      labels: groups.map((g) => g.title),
       datasets: [{
         label: "Mức lệ thuộc (0-100)",
-        data: ACDI_GROUPS.map((g) => dimensionScores[g.key]),
+        data: groups.map((g) => dimensionScores[g.key]),
         backgroundColor: "rgba(230,126,34,0.18)",
         borderColor: "#e67e22",
         pointBackgroundColor: "#e67e22",
@@ -173,7 +186,7 @@ function renderResult({ info, dimensionScores, acdiScore, level, rec }) {
 }
 
 document.getElementById("retakeBtn").onclick = () => {
-  ["acdi_info", "acdi_answers", "acdi_group_index", "acdi_scenarios", "acdi_scenario_index"].forEach((k) => localStorage.removeItem(k));
+  ["acdi_info", "acdi_answers", "acdi_group_index", "acdi_scenarios", "acdi_scenario_index", "acdi_test"].forEach((k) => localStorage.removeItem(k));
   sessionStorage.removeItem("acdi_saved_result");
   window.location.href = "acdi-info.html";
 };

@@ -28,6 +28,23 @@
   .pill.na{ background:var(--text-dim); }
   .empty-state{ text-align:center; padding:40px 20px; color:var(--text-mid); font-size:13.5px; }
   @media (max-width:800px){ .stat-grid{ grid-template-columns:repeat(2,1fr); } }
+  .export-btn{
+    padding:9px 16px; border:1.5px solid var(--border); border-radius:12px; background:#fff;
+    font-size:12px; font-weight:700; color:var(--text-dark); cursor:pointer; display:inline-flex; gap:7px; align-items:center;
+  }
+  .export-btn:hover{ border-color:var(--orange); color:var(--orange2); }
+
+  /* ══════ ACDI Check section ══════ */
+  .acdi-section{ margin-top:40px; }
+  .acdi-subblock{ margin-top:22px; }
+  .acdi-subblock-title{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:12px; }
+  .acdi-subblock-title h3{ font-size:15.5px; font-weight:700; color:var(--text-dark); margin:0; display:flex; align-items:center; gap:8px; }
+  .acdi-charts-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:14px; }
+  .acdi-charts-grid canvas{ max-height:260px; }
+  .privacy-note{ font-size:11.5px; color:var(--text-dim); display:flex; align-items:center; gap:6px; margin-top:6px; }
+  .privacy-note i{ color:var(--green); }
+  .export-row{ display:flex; gap:8px; }
+  @media (max-width:800px){ .acdi-charts-grid{ grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
@@ -68,13 +85,69 @@
         </div>
       </div>
     </div>
+
+    <!-- ═══════════ ACDI CHECK — thống kê tổng hợp, không lộ thông tin cá nhân ═══════════ -->
+    <div class="acdi-section">
+      <div class="section-label"><i class="fa-solid fa-gauge-high"></i> ACDI Check</div>
+      <h2 class="section-title" style="margin-bottom:4px;">Chỉ số lệ thuộc nhận thức vào AI</h2>
+      <p class="privacy-note"><i class="fa-solid fa-shield-heart"></i> Chỉ hiển thị số liệu tổng hợp (điểm trung bình, phân bố mức độ, biểu đồ theo nhóm) — không hiển thị ai đã làm bài hay nội dung câu trả lời của từng học sinh.</p>
+
+      <!-- Lớp của bạn -->
+      <div class="card acdi-subblock">
+        <div class="acdi-subblock-title">
+          <h3><i class="fa-solid fa-users"></i> ACDI · Lớp của bạn</h3>
+          <div class="export-row">
+            <button id="exportClassCsvBtn" class="export-btn"><i class="fa-solid fa-file-csv"></i> Xuất CSV</button>
+            <button id="exportClassJsonBtn" class="export-btn"><i class="fa-solid fa-file-code"></i> Xuất JSON</button>
+          </div>
+        </div>
+        <div class="stat-grid" id="classAcdiStatGrid">
+          <div class="stat-card"><div id="classAcdiCount" class="num">-</div><div class="label">Đã làm ACDI Check</div></div>
+          <div class="stat-card"><div id="classAcdiAvg" class="num">-</div><div class="label">Điểm ACDI trung bình</div></div>
+          <div class="stat-card"><div id="classAcdiHigh" class="num">-</div><div class="label">Mức 3–4 (lệ thuộc)</div></div>
+          <div class="stat-card"><div id="classAcdiLow" class="num">-</div><div class="label">Mức 1 (kiểm soát tốt)</div></div>
+        </div>
+        <div id="classAcdiEmpty" class="empty-state" style="display:none;">Lớp của bạn chưa có học sinh nào làm ACDI Check.</div>
+        <div id="classAcdiCharts" class="acdi-charts-grid" style="display:none;">
+          <canvas id="classLevelChart" height="220"></canvas>
+          <canvas id="classRadarChart" height="220"></canvas>
+        </div>
+      </div>
+
+      <!-- Toàn hệ thống -->
+      <div class="card acdi-subblock">
+        <div class="acdi-subblock-title">
+          <h3><i class="fa-solid fa-globe"></i> ACDI · Toàn hệ thống</h3>
+          <div class="export-row">
+            <button id="exportAllCsvBtn" class="export-btn"><i class="fa-solid fa-file-csv"></i> Xuất CSV</button>
+            <button id="exportAllJsonBtn" class="export-btn"><i class="fa-solid fa-file-code"></i> Xuất JSON</button>
+          </div>
+        </div>
+        <div class="stat-grid" id="allAcdiStatGrid">
+          <div class="stat-card"><div id="allAcdiCount" class="num">-</div><div class="label">Tổng số bài đã làm</div></div>
+          <div class="stat-card"><div id="allAcdiAvg" class="num">-</div><div class="label">Điểm ACDI trung bình</div></div>
+          <div class="stat-card"><div id="allAcdiHigh" class="num">-</div><div class="label">Mức 3–4 (lệ thuộc)</div></div>
+          <div class="stat-card"><div id="allAcdiLow" class="num">-</div><div class="label">Mức 1 (kiểm soát tốt)</div></div>
+        </div>
+        <div id="allAcdiEmpty" class="empty-state" style="display:none;">Hệ thống chưa có dữ liệu ACDI Check nào.</div>
+        <div id="allAcdiCharts" class="acdi-charts-grid" style="display:none;">
+          <canvas id="allLevelChart" height="220"></canvas>
+          <canvas id="allRadarChart" height="220"></canvas>
+        </div>
+      </div>
+    </div>
   </main>
 </div>
 
 <script src="nav.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script type="module">
 import { watchAuth, logout, getUserProfile } from "./auth-web.js";
 import { getOrCreateTeacherClass, listClassMembers } from "./classes-shared.js";
+import {
+  listAssessmentsForClassAnonymized, listAssessmentsAnonymized, summarizeAssessments, LEVEL_INFO,
+} from "./acdi-shared.js";
 
 const guard = document.getElementById("guard");
 const page = document.getElementById("page");
@@ -119,9 +192,144 @@ watchAuth(
 
     const members = await listClassMembers(cls.id);
     renderMembers(members);
+
+    loadAcdiStats(cls.id);
   },
   () => { window.location.href = "index.html"; }
 );
+
+// ═══════════ ACDI CHECK — thống kê tổng hợp (không lộ thông tin cá nhân) ═══════════
+const DIM_LABELS = { start: "Bắt đầu nhiệm vụ", idea: "Ý tưởng", process: "Xử lí nhiệm vụ", trust: "Tin vào kết quả AI", independence: "Khả năng độc lập" };
+let classRows = [];
+let allRows = [];
+let classCharts = [];
+let allCharts = [];
+
+function destroyCharts(list) {
+  list.forEach((c) => c.destroy());
+  list.length = 0;
+}
+
+function renderLevelChart(canvasId, chartsList, levelCounts) {
+  const ctx = document.getElementById(canvasId);
+  const chart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: [1, 2, 3, 4].map((l) => `Mức ${l}`),
+      datasets: [{
+        label: "Số lượng",
+        data: [1, 2, 3, 4].map((l) => levelCounts[l] || 0),
+        backgroundColor: [1, 2, 3, 4].map((l) => LEVEL_INFO[l].color),
+        borderRadius: 8,
+      }],
+    },
+    options: {
+      plugins: { legend: { display: false }, title: { display: true, text: "Phân bố theo mức độ ACDI", font: { size: 12 } } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+    },
+  });
+  chartsList.push(chart);
+}
+
+function renderDimRadarChart(canvasId, chartsList, dimAvg) {
+  const ctx = document.getElementById(canvasId);
+  const keys = Object.keys(DIM_LABELS);
+  const chart = new Chart(ctx, {
+    type: "radar",
+    data: {
+      labels: keys.map((k) => DIM_LABELS[k]),
+      datasets: [{
+        label: "Điểm TB theo nhóm chỉ báo (0-100)",
+        data: keys.map((k) => dimAvg[k] || 0),
+        backgroundColor: "rgba(230,126,34,0.18)",
+        borderColor: "#e67e22",
+        pointBackgroundColor: "#e67e22",
+      }],
+    },
+    options: {
+      scales: { r: { min: 0, max: 100, ticks: { display: false }, pointLabels: { font: { size: 10 } } } },
+      plugins: { legend: { display: false }, title: { display: true, text: "Điểm trung bình theo 5 nhóm chỉ báo", font: { size: 12 } } },
+    },
+  });
+  chartsList.push(chart);
+}
+
+function renderAcdiBlock({ rows, prefix, chartsList, levelChartId, radarChartId }) {
+  const s = summarizeAssessments(rows);
+  document.getElementById(`${prefix}Count`).textContent = s.count;
+  document.getElementById(`${prefix}Avg`).textContent = s.count ? s.avgAcdi : "-";
+  document.getElementById(`${prefix}High`).textContent = (s.levelCounts[3] || 0) + (s.levelCounts[4] || 0);
+  document.getElementById(`${prefix}Low`).textContent = s.levelCounts[1] || 0;
+
+  const emptyEl = document.getElementById(`${prefix}Empty`);
+  const chartsEl = document.getElementById(`${prefix}Charts`);
+  destroyCharts(chartsList);
+  if (s.count === 0) {
+    emptyEl.style.display = "block";
+    chartsEl.style.display = "none";
+    return;
+  }
+  emptyEl.style.display = "none";
+  chartsEl.style.display = "grid";
+  renderLevelChart(levelChartId, chartsList, s.levelCounts);
+  renderDimRadarChart(radarChartId, chartsList, s.dimAvg);
+}
+
+async function loadAcdiStats(classId) {
+  try {
+    [classRows, allRows] = await Promise.all([
+      listAssessmentsForClassAnonymized(classId),
+      listAssessmentsAnonymized(),
+    ]);
+  } catch (err) {
+    console.warn("Không tải được thống kê ACDI Check:", err);
+    classRows = []; allRows = [];
+  }
+  renderAcdiBlock({ rows: classRows, prefix: "classAcdi", chartsList: classCharts, levelChartId: "classLevelChart", radarChartId: "classRadarChart" });
+  renderAcdiBlock({ rows: allRows, prefix: "allAcdi", chartsList: allCharts, levelChartId: "allLevelChart", radarChartId: "allRadarChart" });
+}
+
+// Xuất dữ liệu — CHỈ số liệu tổng hợp (đếm, điểm TB, phân bố mức, điểm TB từng nhóm chỉ báo),
+// không xuất bất kỳ trường định danh nào (không có tên/email/mã tham gia/câu trả lời chi tiết).
+function summaryForExport(rows) {
+  const s = summarizeAssessments(rows);
+  return {
+    soLuong: s.count,
+    diemAcdiTrungBinh: s.avgAcdi,
+    soMuc1_kiemSoatTot: s.levelCounts[1] || 0,
+    soMuc2_coDauHieu: s.levelCounts[2] || 0,
+    soMuc3_leThuoc: s.levelCounts[3] || 0,
+    soMuc4_nguyCoCao: s.levelCounts[4] || 0,
+    diemTB_batDauNhiemVu: s.dimAvg.start,
+    diemTB_yTuong: s.dimAvg.idea,
+    diemTB_xuLiNhiemVu: s.dimAvg.process,
+    diemTB_tinVaoKetQuaAI: s.dimAvg.trust,
+    diemTB_khaNangDocLap: s.dimAvg.independence,
+  };
+}
+
+function downloadBlob(content, mime, filename) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportCsv(rows, filenamePrefix) {
+  const summary = summaryForExport(rows);
+  const csv = Papa.unparse([summary]);
+  downloadBlob("\uFEFF" + csv, "text/csv;charset=utf-8;", `${filenamePrefix}-${new Date().toISOString().slice(0, 10)}.csv`);
+}
+function exportJson(rows, filenamePrefix) {
+  const summary = summaryForExport(rows);
+  downloadBlob(JSON.stringify(summary, null, 2), "application/json;charset=utf-8;", `${filenamePrefix}-${new Date().toISOString().slice(0, 10)}.json`);
+}
+
+document.getElementById("exportClassCsvBtn").onclick = () => exportCsv(classRows, "acdi-lop-hoc");
+document.getElementById("exportClassJsonBtn").onclick = () => exportJson(classRows, "acdi-lop-hoc");
+document.getElementById("exportAllCsvBtn").onclick = () => exportCsv(allRows, "acdi-toan-he-thong");
+document.getElementById("exportAllJsonBtn").onclick = () => exportJson(allRows, "acdi-toan-he-thong");
 
 function renderMembers(members) {
   document.getElementById("statMembers").textContent = members.length;
