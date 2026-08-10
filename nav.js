@@ -5,6 +5,7 @@
 const STUDENT_NAV_LINKS = [
   { key: "chatbot", href: "chatbot.html", icon: "fa-comments", label: "AI SMART Chatbot" },
   { key: "passport", href: "passport.html", icon: "fa-route", label: "Learning Passport" },
+  { key: "acdi", href: "acdi-intro.html", icon: "fa-gauge-high", label: "ACDI Check" },
 ];
 
 const TEACHER_NAV_LINKS = [

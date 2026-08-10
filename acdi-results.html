@@ -7,7 +7,6 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link rel="stylesheet" href="style.css" />
 <style>
-  body{ padding-top:0; }
   .result-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; margin:20px 0; }
   .insight-row{ display:flex; gap:14px; flex-wrap:wrap; margin:18px 0; }
   .insight-box{ flex:1; min-width:220px; border-radius:16px; padding:16px 18px; font-size:13px; line-height:1.6; }
@@ -23,14 +22,9 @@
 </head>
 <body>
 
-<header class="acdi-header">
-  <a href="acdi-intro.html" class="logo">
-    <div class="logo-mark"><i class="fa-solid fa-gauge-high"></i></div>
-    <div class="logo-type">ACDI <span>Check</span></div>
-  </a>
-  <span class="acdi-back">Kết quả</span>
-</header>
+<div id="guard" class="auth-screen"><p>Đang kiểm tra đăng nhập...</p></div>
 
+<div id="page" style="display:none;">
 <main class="acdi-wrap">
   <div id="loadingState"><i class="fa-solid fa-spinner fa-spin"></i> Đang tính điểm ACDI của bạn...</div>
 
@@ -69,28 +63,34 @@
     <div class="card" style="margin-top:18px; text-align:center;">
       <div style="font-size:12px; color:var(--text-mid); margin-bottom:8px;">Mã tham gia của bạn</div>
       <div class="acdi-code-box" id="participantCodeBox" style="display:inline-block;">--------</div>
-      <p style="font-size:11.5px; color:var(--text-dim); margin-top:10px;">Lưu lại mã này nếu bạn muốn làm lại khảo sát để so sánh kết quả trước/sau.</p>
+      <p style="font-size:11.5px; color:var(--text-dim); margin-top:10px;">Kết quả đã được lưu vào tài khoản của bạn. Mã này chỉ dùng thêm cho việc đối chiếu trong dữ liệu nghiên cứu.</p>
     </div>
 
     <div class="acdi-nav-btns" style="margin-top:24px;">
-      <a href="acdi-intro.html" class="acdi-btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center;">Về trang giới thiệu</a>
+      <a href="index.html" class="acdi-btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center;">Về trang chủ</a>
       <button id="retakeBtn" class="acdi-btn-primary">Làm khảo sát mới <i class="fa-solid fa-rotate-right"></i></button>
     </div>
   </div>
 </main>
+</div>
 
+<script src="nav.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script type="module">
+import { watchAuth, logout, getUserProfile } from "./auth-web.js";
 import {
   ACDI_GROUPS, computeDimensionScores, computeQuestionnaireScore,
   computeScenarioScores, computeAcdiScore, classifyLevel, LEVEL_INFO,
   buildRecommendation, saveAssessment,
 } from "./acdi-shared.js";
 
+const guard = document.getElementById("guard");
+const page = document.getElementById("page");
+const nav = renderSiteNav("acdi");
 const loadingState = document.getElementById("loadingState");
 const resultContent = document.getElementById("resultContent");
 
-async function run() {
+async function run(user) {
   let info, answers, scenarioAnswers;
   try { info = JSON.parse(localStorage.getItem("acdi_info") || "null"); } catch { info = null; }
   try { answers = JSON.parse(localStorage.getItem("acdi_answers") || "{}"); } catch { answers = {}; }
@@ -113,6 +113,8 @@ async function run() {
   if (!cached || cached.participantCode !== info.participantCode) {
     try {
       await saveAssessment({
+        studentUid: user.uid,
+        studentEmail: user.email,
         participantCode: info.participantCode,
         schoolLevel: info.schoolLevel,
         grade: info.grade,
@@ -176,7 +178,20 @@ document.getElementById("retakeBtn").onclick = () => {
   window.location.href = "acdi-info.html";
 };
 
-run();
+watchAuth(
+  async (user) => {
+    const profile = await getUserProfile(user.uid);
+    if (profile.role === "teacher") {
+      window.location.href = "teacher.html";
+      return;
+    }
+    guard.style.display = "none";
+    page.style.display = "block";
+    nav.setUser(user.email, () => logout());
+    run(user);
+  },
+  () => { window.location.href = "index.html"; }
+);
 </script>
 </body>
 </html>

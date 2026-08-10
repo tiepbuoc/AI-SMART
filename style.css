@@ -172,7 +172,7 @@ a{ color:var(--orange); }
 .hero-h1 em{ font-style:italic; color:var(--orange); font-weight:300; }
 .hero-sub{ font-size:15px; color:var(--text-mid); max-width:520px; margin:0 auto; line-height:1.6; }
 
-.landing-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:20px; margin-top:36px; }
+.landing-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-top:36px; }
 
 .feature-card{
   background:var(--card-bg); border:1px solid var(--border); border-radius:28px; padding:30px 26px;
@@ -187,6 +187,9 @@ a{ color:var(--orange); }
 .feature-card h2{ font-size:21px; font-weight:400; margin:0 0 10px; letter-spacing:-0.2px; }
 .feature-card p{ font-size:13.5px; color:var(--text-mid); line-height:1.65; margin:0; }
 
+@media (max-width:1000px){
+  .landing-grid{ grid-template-columns:repeat(2,1fr); }
+}
 @media (max-width:700px){
   .landing-grid{ grid-template-columns:1fr; }
   .content{ padding:28px 5% 50px; }
@@ -247,22 +250,8 @@ a{ color:var(--orange); }
   .step-node::after{ display:none; }
 }
 
-/* ══════════ ACDI CHECK — hệ thống độc lập, dùng chung style.css để đồng bộ giao diện ══════════ */
-.acdi-header{
-  position:fixed; top:0; left:0; right:0; z-index:200; height:64px;
-  display:flex; align-items:center; justify-content:space-between; padding:0 5%;
-  background:rgba(255,255,255,0.92); backdrop-filter:blur(20px); border-bottom:1px solid var(--border);
-}
-.acdi-header .logo{ display:flex; align-items:center; gap:10px; text-decoration:none; }
-.acdi-header .logo-mark{
-  width:34px; height:34px; background:linear-gradient(135deg,var(--orange2),var(--orange));
-  border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:15px; color:#fff;
-}
-.acdi-header .logo-type{ font-size:17px; font-weight:700; color:var(--text-dark); }
-.acdi-header .logo-type span{ color:var(--orange); }
-.acdi-header .acdi-back{ font-size:12.5px; color:var(--text-mid); text-decoration:none; }
-.acdi-header .acdi-back:hover{ color:var(--orange); }
-.acdi-wrap{ max-width:760px; margin:0 auto; padding:100px 5% 70px; }
+/* ══════════ ACDI CHECK — nay là 1 mục tính năng chính thức, dùng chung site-nav ══════════ */
+.acdi-wrap{ max-width:760px; margin:0 auto; padding:32px 5% 70px; }
 
 .acdi-progress-track{ height:8px; border-radius:999px; background:var(--orange-pale); overflow:hidden; margin-bottom:26px; }
 .acdi-progress-fill{ height:100%; background:linear-gradient(90deg,var(--orange2),var(--orange)); border-radius:999px; transition:width .3s; }

@@ -7,7 +7,6 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link rel="stylesheet" href="style.css" />
 <style>
-  body{ padding-top:0; }
   .form-card{ margin-top:10px; }
   .field-label{ font-size:12.5px; font-weight:700; color:var(--text-dark); margin:16px 0 8px; }
   .field-label:first-child{ margin-top:0; }
@@ -27,21 +26,16 @@
 </head>
 <body>
 
-<header class="acdi-header">
-  <a href="acdi-intro.html" class="logo">
-    <div class="logo-mark"><i class="fa-solid fa-gauge-high"></i></div>
-    <div class="logo-type">ACDI <span>Check</span></div>
-  </a>
-  <a href="acdi-intro.html" class="acdi-back"><i class="fa-solid fa-arrow-left"></i> Giới thiệu</a>
-</header>
+<div id="guard" class="auth-screen"><p>Đang kiểm tra đăng nhập...</p></div>
 
+<div id="page" style="display:none;">
 <main class="acdi-wrap">
   <div class="acdi-progress-label">Bước 1/3 · Thông tin khảo sát</div>
   <div class="acdi-progress-track"><div class="acdi-progress-fill" style="width:12%"></div></div>
 
   <div class="card form-card">
     <h2 class="section-title">Một vài thông tin trước khi bắt đầu</h2>
-    <p style="font-size:12.5px; color:var(--text-mid); margin-bottom:6px;">Không yêu cầu họ tên, số điện thoại hay bất kỳ thông tin định danh nào — chỉ dùng để thống kê theo nhóm.</p>
+    <p style="font-size:12.5px; color:var(--text-mid); margin-bottom:6px;">Thông tin này chỉ dùng để thống kê theo nhóm (cấp học, khối lớp...), không thu thập thêm thông tin cá nhân nào khác ngoài tài khoản bạn đang đăng nhập.</p>
 
     <div class="field-label">Cấp học</div>
     <select id="schoolLevel" class="acdi-select">
@@ -81,7 +75,7 @@
 
     <div class="acdi-consent-box">
       <input type="checkbox" id="consentCheck" style="margin-top:2px;" />
-      <label for="consentCheck">Tôi đồng ý tham gia khảo sát ẩn danh này cho mục đích nghiên cứu giáo dục.</label>
+      <label for="consentCheck">Tôi đồng ý tham gia khảo sát này cho mục đích nghiên cứu giáo dục.</label>
     </div>
 
     <div id="codePreview" class="code-preview">
@@ -97,9 +91,16 @@
     </div>
   </div>
 </main>
+</div>
 
+<script src="nav.js"></script>
 <script type="module">
+import { watchAuth, logout, getUserProfile } from "./auth-web.js";
 import { generateParticipantCode } from "./acdi-shared.js";
+
+const guard = document.getElementById("guard");
+const page = document.getElementById("page");
+const nav = renderSiteNav("acdi");
 
 const schoolLevelEl = document.getElementById("schoolLevel");
 const gradeEl = document.getElementById("grade");
@@ -158,6 +159,20 @@ document.getElementById("continueBtn").onclick = () => {
   localStorage.setItem("acdi_info", JSON.stringify(info));
   window.location.href = "acdi-questionnaire.html";
 };
+
+watchAuth(
+  async (user) => {
+    const profile = await getUserProfile(user.uid);
+    if (profile.role === "teacher") {
+      window.location.href = "teacher.html";
+      return;
+    }
+    guard.style.display = "none";
+    page.style.display = "block";
+    nav.setUser(user.email, () => logout());
+  },
+  () => { window.location.href = "index.html"; }
+);
 </script>
 </body>
 </html>

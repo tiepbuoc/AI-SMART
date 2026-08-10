@@ -7,7 +7,6 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link rel="stylesheet" href="style.css" />
 <style>
-  body{ padding-top:0; }
   .intro-hero{ text-align:center; padding:0 0 8px; }
   .intro-card{ margin-top:28px; }
   .intro-list{ display:flex; flex-direction:column; gap:14px; margin:18px 0 26px; }
@@ -27,14 +26,9 @@
 </head>
 <body>
 
-<header class="acdi-header">
-  <a href="index.html" class="logo">
-    <div class="logo-mark"><i class="fa-solid fa-gauge-high"></i></div>
-    <div class="logo-type">ACDI <span>Check</span></div>
-  </a>
-  <a href="index.html" class="acdi-back"><i class="fa-solid fa-arrow-left"></i> Về trang chủ AI SMART</a>
-</header>
+<div id="guard" class="auth-screen"><p>Đang kiểm tra đăng nhập...</p></div>
 
+<div id="page" style="display:none;">
 <main class="acdi-wrap">
   <section class="intro-hero">
     <div class="hero-eyebrow"><i class="fa-solid fa-flask"></i> Công cụ nghiên cứu độc lập</div>
@@ -66,7 +60,7 @@
     </div>
 
     <div class="privacy-box">
-      <i class="fa-solid fa-shield-heart"></i><strong>Bảo mật dữ liệu:</strong> Khảo sát hoàn toàn ẩn danh — không thu thập họ tên, số điện thoại hay bất kỳ thông tin định danh nào của bạn. Hệ thống chỉ tạo một mã tham gia ngẫu nhiên để bạn có thể tự lưu lại nếu muốn làm lại khảo sát sau này.
+      <i class="fa-solid fa-shield-heart"></i><strong>Bảo mật dữ liệu:</strong> Câu trả lời của bạn trong bảng hỏi và tình huống không được công khai hay hiển thị cho giáo viên — hệ thống chỉ lưu kết quả tổng hợp (điểm số) cho mục đích nghiên cứu, không gắn với nội dung câu trả lời chi tiết của bạn.
     </div>
 
     <a href="acdi-info.html" class="primary-btn" style="display:block; text-align:center; text-decoration:none;">
@@ -74,6 +68,29 @@
     </a>
   </div>
 </main>
+</div>
 
+<script src="nav.js"></script>
+<script type="module">
+import { watchAuth, logout, getUserProfile } from "./auth-web.js";
+
+const guard = document.getElementById("guard");
+const page = document.getElementById("page");
+const nav = renderSiteNav("acdi");
+
+watchAuth(
+  async (user) => {
+    const profile = await getUserProfile(user.uid);
+    if (profile.role === "teacher") {
+      window.location.href = "teacher.html";
+      return;
+    }
+    guard.style.display = "none";
+    page.style.display = "block";
+    nav.setUser(user.email, () => logout());
+  },
+  () => { window.location.href = "index.html"; }
+);
+</script>
 </body>
 </html>
