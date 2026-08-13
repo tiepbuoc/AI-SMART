@@ -1,18 +1,25 @@
 // acdi-shared.js
 // Lõi dùng chung cho hệ thống ACDI Check: ngân hàng câu hỏi mặc định (dự phòng),
-// soạn đề bằng AI (có cache theo Firestore để tối ưu chi phí), chấm điểm phần tự luận
-// bằng AI, công thức tính điểm ACDI cố định, mô hình 4 mức độ, và các hàm đọc/ghi Firestore.
+// soạn đề bằng AI (có cache theo Firestore để tối ưu chi phí), công thức tính điểm ACDI cố định,
+// mô hình 4 mức độ, và các hàm đọc/ghi Firestore.
 //
 // ACDI Check ĐỘC LẬP với AI SMART Chatbot / Learning Passport / tiện ích Chrome: không dùng
 // chung lịch sử hội thoại — nhưng DÙNG CHUNG cấu hình API (endpoint/apiKey/model) với chatbot,
-// thông qua getApiConfig() trong auth-web.js, cho 2 việc:
-//   (a) soạn đề (bảng hỏi + tình huống) — có cache theo tiêu chí để không phải gọi AI lại
-//       mỗi lần có người làm khảo sát giống tiêu chí (cấp học/khối lớp/môn học) của người trước.
-//   (b) chấm điểm PHẦN TỰ LUẬN (tình huống 3 — học sinh viết lại bằng lời của mình).
+// thông qua getApiConfig() trong auth-web.js.
 //
-// ĐIỂM ACDI TỔNG vẫn luôn được tính bằng CÔNG THỨC CỐ ĐỊNH trong JavaScript (mục 3 bên dưới),
-// AI không tham gia vào việc tính điểm tổng — AI chỉ (a) soạn đề và (b) cho điểm nguy cơ của
-// riêng câu tự luận, sau đó điểm đó được đưa vào công thức chấm tình huống như các câu khác.
+// KIẾN TRÚC CHẤM ĐIỂM (đã sửa lại — xem lịch sử: nhóm "idea" từng luôn ra điểm rất cao do AI
+// đôi khi soạn câu hỏi lệch chiều "reverse" mà không tự phát hiện được lỗi đó):
+//   (a) soạn đề (25 câu Likert + 5 tình huống tự luận) — AI soạn 1 LẦN, có cache theo tiêu chí
+//       (cấp học/khối lớp/môn học) để không phải gọi AI lại mỗi lần có người trùng tiêu chí.
+//       AI PHẢI tự soạn kèm "đáp án" (rubric: keyPoints + riskKeywords) cho từng câu tự luận
+//       NGAY LÚC SOẠN ĐỀ — đây là "chìa khoá chấm điểm" được lưu cùng đề trong cache.
+//   (b) CHẤM ĐIỂM (cả bảng hỏi lẫn tình huống) hoàn toàn bằng CÔNG THỨC CỐ ĐỊNH trong JavaScript
+//       (mục 2 và mục 3 bên dưới), dựa trên rubric AI đã soạn sẵn ở bước (a) — KHÔNG gọi AI lúc
+//       học sinh nộp bài để chấm điểm, nên điểm số hoàn toàn nhất quán, có thể kiểm tra lại được.
+//   (c) SAU KHI đã có điểm số cố định (dimensionScores, acdiScore, level), gọi AI ĐÚNG 1 LẦN
+//       kèm theo đề + rubric đáp án + câu trả lời của học sinh + điểm hệ thống đã chấm, để AI
+//       viết NHẬN XÉT / LỜI KHUYÊN cá nhân hoá (không được thay đổi điểm số) — xem generateFeedbackWithAI().
+//       Nếu bước này lỗi, hệ thống dùng buildRecommendation() (thuần công thức) làm phương án dự phòng.
 
 import { db } from "./firebase-config.js";
 import {
@@ -100,47 +107,58 @@ export const DEFAULT_SCENARIOS = [
     id: "s1", title: "Tình huống 1 · Phát hiện lỗi trong câu trả lời AI",
     prompt: "AI trả lời câu hỏi \"Tính diện tích hình chữ nhật có chiều dài 8cm và chiều rộng 3cm\" như sau:",
     aiAnswer: "\"Diện tích hình chữ nhật là 8 + 3 = 11 cm².\"",
-    question: "Theo bạn, câu trả lời trên có vấn đề gì?", type: "choice",
-    options: [
-      { id: "a", text: "Câu trả lời đúng, không có vấn đề gì.", risk: 100 },
-      { id: "b", text: "Phép tính sai: phải nhân 8 × 3 = 24 cm², không phải cộng lại.", risk: 0 },
-      { id: "c", text: "Chỉ sai đơn vị, phải là cm chứ không phải cm².", risk: 70 },
-      { id: "d", text: "Không chắc, cứ tin theo AI vì AI thường đúng.", risk: 100 },
+    question: "Câu trả lời trên có lỗi gì? Hãy chỉ ra lỗi và sửa lại cho đúng bằng lời của bạn.",
+    type: "text",
+    keyPoints: [
+      { label: "Chỉ ra phép tính sai (phải nhân, không phải cộng)", keywords: ["nhân", "phép nhân", "8 x 3", "8x3", "không phải cộng"] },
+      { label: "Đưa ra đáp số đúng 24 cm²", keywords: ["24"] },
     ],
+    riskKeywords: ["không biết", "em không rõ", "chắc là đúng", "ai nói vậy", "đúng rồi", "không có lỗi"],
   },
   {
     id: "s2", title: "Tình huống 2 · Kiểm chứng nguồn thông tin",
-    prompt: "Bạn vừa nhận được một câu trả lời từ AI và muốn kiểm chứng lại. Bạn sẽ ưu tiên kiểm tra bằng nguồn nào?",
-    question: "Chọn nguồn bạn thấy đáng tin cậy nhất để đối chiếu:", type: "choice",
-    options: [
-      { id: "a", text: "Một bài đăng ẩn danh trên mạng xã hội có nội dung tương tự.", risk: 90 },
-      { id: "b", text: "Sách giáo khoa hoặc tài liệu do giáo viên cung cấp.", risk: 0 },
-      { id: "c", text: "Một video ngắn giải trí không rõ nguồn gốc.", risk: 90 },
-      { id: "d", text: "Hỏi lại chính AI đó xem câu trả lời trước có đúng không.", risk: 60 },
+    prompt: "Bạn vừa nhận được một câu trả lời từ AI và muốn kiểm chứng lại.",
+    question: "Bạn sẽ kiểm chứng bằng cách nào? Giải thích ngắn gọn vì sao bạn chọn cách đó.",
+    type: "text",
+    keyPoints: [
+      { label: "Nêu được nguồn đáng tin cậy để đối chiếu", keywords: ["sách giáo khoa", "giáo viên", "thầy cô", "tài liệu", "sách"] },
+      { label: "Giải thích lý do chọn nguồn đó (đáng tin, chính thống...)", keywords: ["đáng tin", "chính xác", "chính thống", "kiểm chứng"] },
     ],
+    riskKeywords: ["không kiểm tra", "tin luôn", "không cần kiểm chứng", "hỏi lại ai", "hỏi lại ai đó"],
   },
   {
     id: "s3", title: "Tình huống 3 · Giải thích bằng lời của bản thân",
     prompt: "AI giải thích khái niệm sau:",
     aiAnswer: "\"Quang hợp là quá trình cây xanh sử dụng ánh sáng mặt trời, nước và khí carbon dioxide để tạo ra glucose và khí oxy, nhờ chất diệp lục trong lá cây.\"",
-    question: "Hãy viết lại cách hiểu của bạn về khái niệm trên bằng lời của chính mình (ít nhất một câu):", type: "text",
+    question: "Hãy viết lại cách hiểu của bạn về khái niệm trên bằng lời của chính mình (ít nhất một câu, không chép lại nguyên văn).",
+    type: "text",
+    keyPoints: [
+      { label: "Nêu được nguyên liệu/điều kiện (ánh sáng, nước, CO2)", keywords: ["ánh sáng", "nước", "carbon", "co2", "khí carbonic"] },
+      { label: "Nêu được sản phẩm tạo ra (glucose/chất hữu cơ và oxy)", keywords: ["glucose", "chất hữu cơ", "oxy", "oxi"] },
+    ],
+    riskKeywords: ["không biết", "em không rõ", "ai nói vậy", "copy"],
   },
   {
-    id: "s4", title: "Tình huống 4 · Lựa chọn cách sử dụng AI",
-    prompt: "Khi gặp một bài tập khó, bạn thường có xu hướng làm gì nhất?",
-    question: "Chọn cách bạn thường làm nhất:", type: "choice",
-    options: [
-      { id: "a", text: "Tự làm trước, sau đó nhờ AI nhận xét và góp ý.", risk: 10 },
-      { id: "b", text: "Xin AI gợi ý từng bước để tự hoàn thành.", risk: 45 },
-      { id: "c", text: "Xin AI đáp án hoàn chỉnh ngay từ đầu.", risk: 85 },
-      { id: "d", text: "Sao chép trực tiếp câu trả lời của AI để nộp bài.", risk: 100 },
+    id: "s4", title: "Tình huống 4 · Trình bày cách làm của riêng bạn",
+    prompt: "Khi gặp một bài tập khó, giả sử bạn KHÔNG dùng AI để tra cứu ngay.",
+    question: "Hãy trình bày các bước bạn sẽ làm để tự giải quyết bài tập đó (không chỉ nêu đáp số).",
+    type: "text",
+    keyPoints: [
+      { label: "Nêu được bước đọc/hiểu đề trước", keywords: ["đọc đề", "hiểu đề", "phân tích đề", "xác định yêu cầu"] },
+      { label: "Nêu được bước tự thử/tự giải trước khi tra cứu thêm", keywords: ["tự làm", "tự giải", "thử làm", "suy nghĩ"] },
     ],
+    riskKeywords: ["hỏi ai luôn", "chép đáp án", "không biết làm sao", "chịu"],
   },
   {
     id: "s5", title: "Tình huống 5 · Tự giải quyết khi không có AI",
     prompt: "Hãy tự giải bài toán ngắn sau (không dùng AI, máy tính hay tra cứu):",
-    question: "Một quyển sách có 240 trang. Nếu đọc đều 24 trang mỗi ngày thì cần bao nhiêu ngày để đọc hết? (nhập một số)",
-    type: "number", correctAnswer: 10,
+    question: "Một quyển sách có 240 trang. Nếu đọc đều 24 trang mỗi ngày thì cần bao nhiêu ngày để đọc hết? Trình bày cách tính và đáp số bằng lời của bạn.",
+    type: "text",
+    keyPoints: [
+      { label: "Trình bày phép chia 240:24", keywords: ["240", "24", "chia"] },
+      { label: "Đưa ra đáp số đúng 10 ngày", keywords: ["10 ngày", "= 10", "10"] },
+    ],
+    riskKeywords: ["không biết", "em không rõ", "chắc là", "không tính được"],
   },
 ];
 
@@ -174,92 +192,76 @@ export function computeQuestionnaireScore(dimensionScores) {
   return vals.reduce((s, x) => s + x, 0) / vals.length;
 }
 
-// ============ 2. CHẤM ĐIỂM TÌNH HUỐNG ============
-// choice/number: chấm bằng công thức/logic cố định (không dùng AI).
-// text (tự luận): chấm bằng AI, theo rubric CỐ ĐỊNH — xem mục 2b.
-export function scoreChoiceOrNumberScenario(scenario, answer) {
-  if (scenario.type === "choice") {
-    const opt = scenario.options.find((o) => o.id === answer);
-    return opt ? Number(opt.risk) || 0 : 100;
-  }
-  if (scenario.type === "number") {
-    const num = Number(answer);
-    if (Number.isNaN(num)) return 100;
-    return num === scenario.correctAnswer ? 0 : 100;
-  }
-  return null; // "text" phải chấm bằng AI, xem gradeEssayWithAI
+// ============ 2. CHẤM ĐIỂM TÌNH HUỐNG (tự luận) — HOÀN TOÀN BẰNG CÔNG THỨC CỐ ĐỊNH ============
+// KHÔNG gọi AI lúc học sinh nộp bài. Mỗi tình huống đã được AI soạn kèm "đáp án"/rubric
+// (keyPoints + riskKeywords) NGAY LÚC TẠO ĐỀ (xem GENERATION_INSTRUCTION_TEMPLATE mục 5) — rubric
+// đó được lưu cùng đề trong cache Firestore (acdiTests/{testKey}), nên việc chấm điểm về sau chỉ là
+// logic JS thuần: luôn ra cùng một kết quả cho cùng một câu trả lời, kiểm tra lại được, không phụ
+// thuộc việc gọi AI lúc chấm có ổn định hay không.
+
+function normalizeText(s) {
+  return String(s || "").toLowerCase().normalize("NFC")
+    .replace(/[.,!?;:"'()\u201c\u201d]/g, " ").replace(/\s+/g, " ").trim();
 }
 
-// Hàm dự phòng (offline) chấm tự luận bằng độ trùng lặp từ ngữ — CHỈ dùng khi việc gọi AI
-// chấm điểm bị lỗi (mất mạng, API lỗi...), để trang kết quả vẫn ra được điểm thay vì bị kẹt.
-function fallbackScoreOwnWordsExplanation(aiText, studentText) {
-  const normalize = (s) => s.toLowerCase().normalize("NFC")
-    .replace(/[.,!?;:"'()\u201c\u201d]/g, "").split(/\s+/).filter(Boolean);
-  const studentWords = normalize(studentText || "");
-  if (studentWords.length < 8) return 80;
-  const aiWords = new Set(normalize(aiText || ""));
-  const overlapCount = studentWords.filter((w) => aiWords.has(w)).length;
-  const overlapRatio = overlapCount / studentWords.length;
-  return Math.max(0, Math.min(100, Math.round(overlapRatio * 100)));
+// Độ trùng lặp từ ngữ giữa câu trả lời học sinh và đoạn gốc AI (0-1, càng cao càng giống/sao chép).
+function copyOverlapRatio(referenceText, studentText) {
+  const studentWords = normalizeText(studentText).split(" ").filter(Boolean);
+  if (studentWords.length === 0) return 0;
+  const refWords = new Set(normalizeText(referenceText).split(" ").filter(Boolean));
+  if (refWords.size === 0) return 0;
+  const overlapCount = studentWords.filter((w) => refWords.has(w)).length;
+  return overlapCount / studentWords.length;
 }
 
-// ============ 2b. CHẤM TỰ LUẬN BẰNG AI (rubric cố định, dùng lại nguyên văn cho MỌI lần chấm) ============
-const ESSAY_GRADING_RUBRIC = `RUBRIC CHẤM CỐ ĐỊNH — điểm NGUY CƠ LỆ THUỘC AI của câu trả lời tự luận (0-100, càng cao càng đáng lo),
-áp dụng Y HỆT cho mọi câu trả lời, không tự đặt tiêu chí khác, không thay đổi cách chấm giữa các lần chấm:
+// Chấm 1 câu tự luận theo rubric cố định (keyPoints + riskKeywords) đã có sẵn trong "scenario".
+// Trả về điểm NGUY CƠ LỆ THUỘC AI (0-100, càng cao càng đáng lo). Thuần công thức, không dùng AI.
+//
+//  - Câu trả lời quá ngắn (dưới 6 từ) coi như chưa thể hiện được hiểu biết → nguy cơ cao ngay (90).
+//  - Điểm bắt đầu từ 100, GIẢM dần theo % ý chính (keyPoints) mà học sinh có nhắc tới (khớp nếu câu
+//    trả lời chứa ít nhất một từ khoá/đồng nghĩa trong "keywords" của ý đó).
+//  - CỘNG THÊM điểm nếu câu trả lời chứa cụm từ trong "riskKeywords" (dấu hiệu không tự hiểu).
+//  - CỘNG THÊM điểm nếu câu trả lời trùng lặp từ ngữ nhiều với "aiAnswer" (sao chép thay vì tự diễn
+//    đạt) — chỉ áp dụng khi tình huống có trường này.
+export function scoreEssayByRubric(scenario, studentText) {
+  const text = normalizeText(studentText);
+  const wordCount = text ? text.split(" ").filter(Boolean).length : 0;
+  if (wordCount < 6) return 90;
 
-0-20  : Diễn đạt hoàn toàn bằng lời riêng, đúng bản chất khái niệm, không sao chép cấu trúc câu của đoạn gốc.
-21-40 : Diễn đạt phần lớn bằng lời riêng, đúng bản chất, còn giữ lại một vài cụm từ giống đoạn gốc.
-41-60 : Diễn đạt lẫn lộn giữa lời riêng và sao chép, đúng ý nhưng khá gần với cấu trúc câu gốc.
-61-80 : Gần như sao chép lại đoạn gốc, chỉ thay đổi một vài từ.
-81-100: Sao chép gần như nguyên văn đoạn gốc, hoặc câu trả lời quá ngắn/rỗng/lạc đề, không thể hiện được sự hiểu bằng lời riêng.`;
+  const keyPoints = Array.isArray(scenario.keyPoints) ? scenario.keyPoints : [];
+  let matchedCount = 0;
+  keyPoints.forEach((kp) => {
+    const kws = Array.isArray(kp.keywords) ? kp.keywords : [];
+    if (kws.some((kw) => text.includes(normalizeText(kw)))) matchedCount++;
+  });
+  const coverageRatio = keyPoints.length ? matchedCount / keyPoints.length : 0.5;
 
-// Chấm 1 câu tự luận bằng AI. Trả về { score, source }. Nếu gọi AI lỗi, dùng fallback offline.
-export async function gradeEssayWithAI({ aiAnswer, studentText }) {
-  try {
-    const cfg = await getApiConfig();
-    const prompt = `Bạn là bộ máy CHẤM ĐIỂM phần tự luận trong bài kiểm tra ACDI Check.
+  let score = 100 - coverageRatio * 75; // đủ ý chính -> điểm nguy cơ giảm mạnh (còn khoảng 25 nền)
 
-${ESSAY_GRADING_RUBRIC}
+  const riskKeywords = Array.isArray(scenario.riskKeywords) ? scenario.riskKeywords : [];
+  const riskHits = riskKeywords.filter((kw) => text.includes(normalizeText(kw))).length;
+  score += Math.min(riskHits, 3) * 12; // mỗi cụm từ rủi ro cộng thêm, tối đa cộng 36
 
-Đoạn giải thích gốc (của AI, dùng làm mốc so sánh):
-"""${String(aiAnswer || "").replace(/"""/g, '"')}"""
-
-Câu trả lời của học sinh (cần chấm):
-"""${String(studentText || "").replace(/"""/g, '"')}"""
-
-CHỈ trả lời bằng MỘT SỐ NGUYÊN DUY NHẤT từ 0 đến 100 (điểm nguy cơ theo rubric trên). Không kèm giải thích, không chữ, không markdown, không dấu chấm câu.`;
-
-    const raw = await callAiApi({
-      endpoint: cfg.endpoint, apiKey: cfg.apiKey, model: cfg.model,
-      messages: [{ role: "user", content: prompt }], maxTokens: 1500,
-    });
-    const match = String(raw).match(/-?\d+/);
-    if (!match) throw new Error("Không đọc được số điểm từ phản hồi AI: " + raw);
-    const score = Math.max(0, Math.min(100, Math.round(Number(match[0]))));
-    return { score, source: "ai" };
-  } catch (err) {
-    console.warn("Chấm tự luận bằng AI thất bại, dùng cách chấm dự phòng offline:", err);
-    return { score: fallbackScoreOwnWordsExplanation(aiAnswer, studentText), source: "fallback" };
+  if (scenario.aiAnswer) {
+    const overlap = copyOverlapRatio(scenario.aiAnswer, studentText);
+    if (overlap > 0.5) score += (overlap - 0.5) * 60; // chép gần nguyên văn -> cộng thêm nhiều
   }
+
+  return Math.max(0, Math.min(100, Math.round(score)));
 }
 
 // Chấm toàn bộ tình huống của MỘT bộ đề (nhận "scenarios" của bộ đề đang dùng).
-// Trả về { perScenario, overall, essaySource }.
-export async function computeScenarioScores(scenarioAnswers, scenarios = DEFAULT_SCENARIOS) {
+// Không còn là hàm async (không gọi AI) — giữ tên/đầu ra giống cũ để nơi gọi (results.html) không
+// phải sửa cách dùng ("await computeScenarioScores(...)" vẫn hợp lệ với giá trị không phải Promise).
+// Trả về { perScenario, overall }.
+export function computeScenarioScores(scenarioAnswers, scenarios = DEFAULT_SCENARIOS) {
   const perScenario = {};
-  let essaySource = null;
-  for (const sc of scenarios) {
-    if (sc.type === "text") {
-      const { score, source } = await gradeEssayWithAI({ aiAnswer: sc.aiAnswer, studentText: scenarioAnswers[sc.id] });
-      perScenario[sc.id] = score;
-      essaySource = source;
-    } else {
-      perScenario[sc.id] = scoreChoiceOrNumberScenario(sc, scenarioAnswers[sc.id]);
-    }
-  }
+  scenarios.forEach((sc) => {
+    perScenario[sc.id] = scoreEssayByRubric(sc, scenarioAnswers[sc.id]);
+  });
   const vals = Object.values(perScenario);
-  const overall = vals.reduce((s, x) => s + x, 0) / vals.length;
-  return { perScenario, overall, essaySource };
+  const overall = vals.length ? vals.reduce((s, x) => s + x, 0) / vals.length : 0;
+  return { perScenario, overall };
 }
 
 // ============ 3. CÔNG THỨC ACDI (CỐ ĐỊNH — AI không tham gia bước này) ============
@@ -317,6 +319,69 @@ export function buildRecommendation(dimensionScores, groups = DEFAULT_ACDI_GROUP
   };
 }
 
+// ============ 5b. NHẬN XÉT / LỜI KHUYÊN CÁ NHÂN HOÁ — GỌI AI ĐÚNG 1 LẦN, SAU KHI ĐÃ CÓ ĐIỂM ============
+// QUAN TRỌNG: hàm này KHÔNG được dùng để tính hay sửa điểm số — điểm (dimensionScores/acdiScore/level)
+// đã được chốt bằng công thức cố định ở mục 2-4 TRƯỚC khi gọi hàm này. AI ở đây chỉ đọc lại đề, rubric
+// đáp án, câu trả lời thực tế của học sinh và điểm hệ thống đã chấm, để viết nhận xét/lời khuyên bằng
+// lời tự nhiên, cá nhân hoá hơn so với GROUP_TIPS tĩnh. Nếu gọi AI lỗi, dùng buildRecommendation()
+// (thuần công thức, không cần mạng) làm phương án dự phòng — xem cách dùng ở acdi-results.html.
+export async function generateFeedbackWithAI({ info, groups, scenarios, answers, scenarioAnswers, perScenario, dimensionScores, acdiScore, level }) {
+  const li = LEVEL_INFO[level];
+  const groupSummary = groups.map((g) => `- ${g.title} (key:${g.key}): điểm ${dimensionScores[g.key]}/100`).join("\n");
+  const scenarioSummary = scenarios.map((sc) => {
+    const ans = scenarioAnswers?.[sc.id];
+    return `- ${sc.title}\n  Câu hỏi: ${sc.question}\n  Câu trả lời học sinh: "${String(ans || "(không trả lời)").slice(0, 400)}"\n  Điểm nguy cơ hệ thống đã chấm: ${perScenario?.[sc.id] ?? "-"}/100`;
+  }).join("\n");
+
+  const prompt = `Bạn là chuyên gia giáo dục, viết NHẬN XÉT và LỜI KHUYÊN cá nhân hoá cho một học sinh vừa
+làm xong bài khảo sát ACDI Check (đo mức độ lệ thuộc nhận thức vào AI trong học tập).
+
+QUAN TRỌNG: điểm số dưới đây ĐÃ ĐƯỢC HỆ THỐNG CHẤM CỐ ĐỊNH XONG, bạn KHÔNG được thay đổi hay bàn luận
+lại về tính đúng/sai của điểm số — nhiệm vụ của bạn CHỈ là viết nhận xét và lời khuyên dựa trên các
+điểm số và câu trả lời thực tế này.
+
+Thông tin học sinh: cấp học ${info?.schoolLevel === "thpt" ? "THPT" : "THCS"}, khối lớp ${info?.grade}.
+Điểm ACDI tổng: ${acdiScore}/100 — Mức ${level} (${li.title}).
+
+Điểm 5 nhóm chỉ báo:
+${groupSummary}
+
+Chi tiết 5 tình huống tự luận và điểm nguy cơ hệ thống đã chấm cho từng câu:
+${scenarioSummary}
+
+Hãy trả lời CHỈ bằng JSON đúng schema sau, viết bằng tiếng Việt, giọng văn gần gũi, mang tính xây dựng,
+không phán xét, dựa sát vào câu trả lời thực tế của học sinh (không nói chung chung):
+{
+  "highestRiskComment": "1-2 câu nhận xét cụ thể về nhóm chỉ báo có điểm nguy cơ cao nhất, dựa trên các câu trả lời liên quan",
+  "strengthComment": "1-2 câu nhận xét về nhóm chỉ báo học sinh duy trì tốt nhất (điểm nguy cơ thấp nhất)",
+  "advice": "2-4 câu lời khuyên cụ thể, khả thi, phù hợp lứa tuổi/khối lớp, giúp học sinh cải thiện nhóm yếu nhất"
+}
+CHỈ trả về JSON, không kèm giải thích, không markdown, không dấu backtick.`;
+
+  try {
+    const cfg = await getApiConfig();
+    const raw = await callAiApi({
+      endpoint: cfg.endpoint, apiKey: cfg.apiKey, model: cfg.model,
+      messages: [{ role: "user", content: prompt }], maxTokens: 1200,
+    });
+    const cleaned = String(raw).replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(cleaned);
+    if (!parsed || typeof parsed.highestRiskComment !== "string" || typeof parsed.strengthComment !== "string" || typeof parsed.advice !== "string") {
+      throw new Error("JSON nhận xét từ AI không đúng cấu trúc.");
+    }
+    return { ...parsed, source: "ai" };
+  } catch (err) {
+    console.warn("Tạo nhận xét cá nhân hoá bằng AI thất bại, dùng khuyến nghị mặc định:", err);
+    const rec = buildRecommendation(dimensionScores, groups);
+    return {
+      highestRiskComment: `Nhóm "${rec.highestRiskGroup}" đang là nhóm bạn cần chú ý nhất.`,
+      strengthComment: `Nhóm "${rec.bestMaintainedGroup}" là nhóm bạn duy trì tốt nhất.`,
+      advice: rec.tip,
+      source: "fallback",
+    };
+  }
+}
+
 // ============ 6. MÃ NGƯỜI THAM GIA (ẨN DANH) ============
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export function generateParticipantCode(len = 8) {
@@ -354,24 +419,52 @@ YÊU CẦU BẮT BUỘC — áp dụng GIỐNG NHAU cho MỌI lần soạn đề
    - "process" (Phụ thuộc trong xử lí nhiệm vụ): mức độ giao cho AI phân tích, lập luận, hoàn thành sản phẩm.
    - "trust" (Phụ thuộc vào kết quả của AI): mức độ tin tưởng, chấp nhận câu trả lời AI mà không kiểm tra.
    - "independence" (Khả năng hoạt động khi không có AI): khả năng ghi nhớ, giải thích, tự hoàn thành khi không có AI.
+   BẮT BUỘC soạn ĐỦ 25 câu (5 nhóm × 5 câu), TOÀN BỘ do bạn tự viết — không được bỏ trống hay rút gọn.
+   PHÂN BỐ NỘI DUNG ĐỀU trong từng nhóm: 5 câu của MỘT nhóm phải đo 5 KHÍA CẠNH KHÁC NHAU của cùng
+   một chỉ báo (không được viết 5 câu gần như lặp lại cùng một ý), để điểm trung bình của nhóm phản
+   ánh đúng nhiều mặt của hành vi, không bị lệch vì phần lớn câu hỏi trùng ý nhau.
 2. Mỗi nhóm có đúng 5 câu hỏi kiểu Likert 5 mức (từ "Hoàn toàn không đúng" đến "Hoàn toàn đúng"),
    mỗi câu có "id" duy nhất dạng "g{số nhóm 1-5}q{số câu 1-5}" (ví dụ g1q1..g1q5, g2q1..g2q5,...).
-3. Trường "reverse": để false với 4 nhóm đầu ("start","idea","process","trust"); để true với TẤT CẢ
-   5 câu của nhóm "independence" (vì nhóm này đo năng lực độc lập, Likert càng cao thì càng ÍT lệ thuộc).
+3. Trường "reverse" — ĐÂY LÀ CHỖ DỄ SAI NHẤT, PHẢI TỰ KIỂM TRA LẠI TỪNG CÂU TRƯỚC KHI TRẢ VỀ:
+   - Mặc định "reverse: false" cho 4 nhóm đầu ("start","idea","process","trust") — NGHĨA LÀ mọi câu
+     hỏi trong 4 nhóm này BẮT BUỘC phải viết theo hướng "câu đồng ý (chọn mức cao) = lệ thuộc AI
+     NHIỀU HƠN". TUYỆT ĐỐI KHÔNG được viết một câu theo hướng ngược lại (ví dụ ca ngợi sự độc lập,
+     "tôi tự nghĩ ra ý tưởng trước khi hỏi AI") rồi vẫn để reverse:false — làm vậy học sinh trả lời
+     tốt (độc lập) sẽ bị chấm nhầm thành lệ thuộc cao, khiến điểm nhóm đó luôn bị đẩy lên rất cao
+     một cách SAI LỆCH. Nếu bạn thấy một câu tự nhiên phải viết theo hướng độc lập, hãy VIẾT LẠI câu
+     đó theo hướng lệ thuộc (ví dụ đổi thành "tôi khó tự nghĩ ra ý tưởng nếu chưa hỏi AI") thay vì đặt
+     reverse:true cho nhóm này.
+   - "reverse: true" CHỈ dùng cho TẤT CẢ 5 câu của nhóm "independence" (vì nhóm này đo năng lực độc
+     lập, Likert càng cao thì càng ÍT lệ thuộc).
+   - Trước khi trả JSON, tự rà soát: với mỗi câu reverse:false, "chọn mức 5 (Hoàn toàn đúng)" có
+     đúng nghĩa là "lệ thuộc AI nhiều nhất" không? Nếu không đúng, phải sửa lại cách diễn đạt câu đó.
 4. Có thể lồng ví dụ, ngữ cảnh gắn với môn học/khối lớp nêu trên để học sinh dễ liên hệ, nhưng Ý NGHĨA
    ĐO LƯỜNG của mỗi nhóm phải giữ đúng như mô tả ở trên — không được tạo câu hỏi đo sai nhóm.
-5. Soạn đúng 5 TÌNH HUỐNG, id lần lượt "s1".."s5", ĐÚNG LOẠI như sau:
-   - s1 (type "choice"): một câu trả lời của AI có chứa lỗi (nội dung liên quan môn học nêu trên nếu hợp lý),
-     4 lựa chọn, mỗi lựa chọn có "risk" (0-100, điểm nguy cơ nếu học sinh chọn đáp án đó) — đúng 1 lựa chọn
-     có risk thấp nhất (gần 0, là lựa chọn phát hiện đúng lỗi và đúng cách sửa).
-   - s2 (type "choice"): tình huống chọn nguồn kiểm chứng thông tin, 4 lựa chọn kèm "risk" — lựa chọn
-     "sách giáo khoa / tài liệu do giáo viên cung cấp" (hoặc tương đương) có risk thấp nhất.
-   - s3 (type "text"): có "aiAnswer" là một đoạn AI giải thích một khái niệm liên quan môn học nêu trên
-     (3-4 câu), và yêu cầu học sinh viết lại cách hiểu bằng lời riêng của mình.
-   - s4 (type "choice"): tình huống về thói quen dùng AI khi gặp bài khó, 4 lựa chọn kèm "risk" tăng dần
-     từ "tự làm trước rồi mới nhờ AI nhận xét" (risk thấp) đến "sao chép nguyên câu trả lời AI để nộp" (risk cao).
-   - s5 (type "number"): một bài toán/tình huống tính toán đơn giản, ngắn, có đáp án đúng là một số
-     nguyên duy nhất trong trường "correctAnswer".
+5. Soạn đúng 5 TÌNH HUỐNG TỰ LUẬN, id lần lượt "s1".."s5", TẤT CẢ đều type "text" (không dùng
+   type "choice" hay "number" nữa) — mỗi tình huống yêu cầu học sinh TỰ VIẾT câu trả lời bằng lời
+   của mình (không phải chọn đáp án có sẵn), để đánh giá đúng khả năng tư duy độc lập thay vì đoán:
+   - s1: một câu trả lời của AI có chứa LỖI (nội dung liên quan môn học nêu trên nếu hợp lý, trong
+     trường "aiAnswer"); yêu cầu học sinh chỉ ra lỗi đó là gì và sửa lại cho đúng bằng lời của mình.
+   - s2: tình huống cần kiểm chứng một thông tin AI đưa ra; yêu cầu học sinh nêu cách/nguồn mình sẽ
+     dùng để kiểm chứng và giải thích ngắn gọn vì sao.
+   - s3: có "aiAnswer" là một đoạn AI giải thích một khái niệm liên quan môn học nêu trên (3-4 câu);
+     yêu cầu học sinh viết lại cách hiểu bằng lời riêng của mình (không được chép lại nguyên văn).
+   - s4: một tình huống/bài tập nhỏ liên quan môn học, yêu cầu học sinh tự trình bày CÁCH LÀM (các
+     bước suy luận) của mình, không chỉ đưa ra đáp số.
+   - s5: một bài toán/câu hỏi áp dụng ngắn, KHÔNG dùng AI/máy tính/tra cứu, yêu cầu học sinh tự giải
+     và trình bày lại cách giải bằng lời.
+   ĐỘ KHÓ của nội dung s1-s5 phải tăng dần theo khối lớp đã cho ở trên (nội dung dành cho lớp 12 phải
+   khó/nâng cao hơn một chút so với nội dung cùng dạng dành cho lớp 10, và khó hơn khối THCS); vẫn phải
+   phù hợp môn học nêu trên và vừa sức để học sinh khối lớp đó có thể tự làm được nếu không dùng AI.
+
+   MỖI tình huống BẮT BUỘC phải có kèm "đáp án"/rubric để HỆ THỐNG (không phải AI) tự động chấm điểm
+   NGUY CƠ LỆ THUỘC AI (0-100, càng cao càng đáng lo) khi học sinh nộp bài sau này, gồm 2 trường:
+   - "keyPoints": mảng 2-4 ý CHÍNH mà một câu trả lời TỐT (hiểu đúng, tự lập luận được) cần thể hiện.
+     Mỗi phần tử có dạng { "label": "mô tả ngắn ý đó", "keywords": [ 3-6 từ/cụm từ tiếng Việt, không
+     dấu câu, là các từ khoá/đồng nghĩa mà một câu trả lời đúng thường sẽ chứa MỘT TRONG SỐ ĐÓ ] }.
+   - "riskKeywords": mảng 3-6 cụm từ/từ khoá (chuỗi ngắn) cho thấy dấu hiệu RỦI RO cao khi xuất hiện
+     trong câu trả lời của học sinh — ví dụ thể hiện học sinh không tự hiểu, chỉ đoán, dựa hẳn vào AI,
+     hoặc trả lời cho có (ví dụ: "không biết", "AI nói vậy", "chắc là đúng", "em không rõ", "copy").
 6. CHỈ trả về JSON hợp lệ đúng schema bên dưới. TUYỆT ĐỐI không kèm giải thích, không markdown,
    không dấu backtick, không có chữ nào ngoài JSON.
 
@@ -382,12 +475,11 @@ SCHEMA JSON:
     ... đúng 5 nhóm theo thứ tự start, idea, process, trust, independence ...
   ],
   "scenarios": [
-    { "id": "s1", "title": "...", "prompt": "...", "aiAnswer": "...", "question": "...", "type": "choice",
-      "options": [ { "id": "a", "text": "...", "risk": 0 }, { "id": "b", "text": "...", "risk": 0 }, { "id": "c", "text": "...", "risk": 0 }, { "id": "d", "text": "...", "risk": 0 } ] },
-    { "id": "s2", "title": "...", "prompt": "...", "question": "...", "type": "choice", "options": [ ... 4 lựa chọn ... ] },
-    { "id": "s3", "title": "...", "prompt": "...", "aiAnswer": "...", "question": "...", "type": "text" },
-    { "id": "s4", "title": "...", "prompt": "...", "question": "...", "type": "choice", "options": [ ... 4 lựa chọn ... ] },
-    { "id": "s5", "title": "...", "prompt": "...", "question": "...", "type": "number", "correctAnswer": 0 }
+    { "id": "s1", "title": "...", "prompt": "...", "aiAnswer": "...", "question": "...", "type": "text",
+      "keyPoints": [ { "label": "...", "keywords": ["...", "..."] }, ... 2-4 ý ... ],
+      "riskKeywords": ["...", "...", "..."] },
+    ... đúng 5 tình huống s1..s5, TẤT CẢ type "text", đều có "keyPoints" và "riskKeywords" như trên
+    ("aiAnswer" chỉ bắt buộc với s1 và s3, các tình huống khác có thể bỏ trường này nếu không cần) ...
   ]
 }`;
 
@@ -400,11 +492,14 @@ function validateGeneratedTest(data) {
     if (!g || g.key !== expectedKeys[i] || !Array.isArray(g.questions) || g.questions.length !== 5) return false;
     if (g.questions.some((q) => !q.id || typeof q.text !== "string")) return false;
   }
-  const expectedTypes = { s1: "choice", s2: "choice", s3: "text", s4: "choice", s5: "number" };
-  for (const sc of data.scenarios) {
-    if (!sc || !expectedTypes[sc.id] || sc.type !== expectedTypes[sc.id]) return false;
-    if (sc.type === "choice" && (!Array.isArray(sc.options) || sc.options.length < 2)) return false;
-    if (sc.type === "number" && typeof sc.correctAnswer !== "number") return false;
+  const expectedIds = ["s1", "s2", "s3", "s4", "s5"];
+  for (let i = 0; i < 5; i++) {
+    const sc = data.scenarios[i];
+    if (!sc || sc.id !== expectedIds[i] || sc.type !== "text") return false;
+    if (typeof sc.question !== "string" || !sc.question.trim()) return false;
+    if (!Array.isArray(sc.keyPoints) || sc.keyPoints.length < 2) return false;
+    if (sc.keyPoints.some((k) => !k || typeof k.label !== "string" || !Array.isArray(k.keywords) || k.keywords.length < 1)) return false;
+    if (!Array.isArray(sc.riskKeywords) || sc.riskKeywords.length < 2) return false;
   }
   return true;
 }

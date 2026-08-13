@@ -81,7 +81,7 @@ import { watchAuth, logout, getUserProfile } from "./auth-web.js";
 import {
   DEFAULT_ACDI_GROUPS, DEFAULT_SCENARIOS, computeDimensionScores, computeQuestionnaireScore,
   computeScenarioScores, computeAcdiScore, classifyLevel, LEVEL_INFO,
-  buildRecommendation, saveAssessment,
+  buildRecommendation, generateFeedbackWithAI, saveAssessment,
 } from "./acdi-shared.js";
 
 const guard = document.getElementById("guard");
@@ -107,15 +107,22 @@ async function run(user) {
   const dimensionScores = computeDimensionScores(answers, groups);
   const questionnaireScore = computeQuestionnaireScore(dimensionScores);
 
-  // Phần tự luận (tình huống dạng "text") được CHẤM BẰNG AI ở đây theo rubric cố định;
-  // các tình huống trắc nghiệm/số vẫn chấm bằng công thức cố định. Điểm ACDI tổng luôn được
-  // tính lại bằng công thức cố định (computeAcdiScore) — AI không quyết định điểm tổng.
-  loadingState.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang chấm điểm phần tự luận và tính điểm ACDI của bạn...';
-  const { perScenario, overall: scenarioScore } = await computeScenarioScores(scenarioAnswers, scenarios);
+  // Chấm 5 tình huống tự luận HOÀN TOÀN bằng công thức cố định trong JS (dựa trên rubric
+  // keyPoints/riskKeywords mà AI đã soạn sẵn lúc tạo đề) — không gọi AI ở bước này.
+  // Điểm ACDI tổng luôn được tính bằng công thức cố định (computeAcdiScore) — AI không quyết định điểm.
+  loadingState.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang tính điểm ACDI của bạn...';
+  const { perScenario, overall: scenarioScore } = computeScenarioScores(scenarioAnswers, scenarios);
 
   const acdiScore = computeAcdiScore(questionnaireScore, scenarioScore);
   const level = classifyLevel(acdiScore);
-  const rec = buildRecommendation(dimensionScores, groups);
+
+  // SAU KHI đã có điểm số cố định, gọi AI ĐÚNG 1 LẦN để viết nhận xét/lời khuyên cá nhân hoá
+  // (không được thay đổi điểm số). Nếu lỗi, hàm tự dùng buildRecommendation() làm dự phòng.
+  loadingState.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang chuẩn bị nhận xét dành riêng cho bạn...';
+  const feedback = await generateFeedbackWithAI({
+    info, groups, scenarios, answers, scenarioAnswers, perScenario, dimensionScores, acdiScore, level,
+  });
+  const rec = buildRecommendation(dimensionScores, groups); // vẫn giữ để có tên nhóm cao/thấp nhất hiển thị
 
   // Chỉ lưu vào Firestore một lần cho mỗi lần hoàn thành khảo sát (tránh trùng khi tải lại trang)
   let cached = null;
@@ -147,10 +154,10 @@ async function run(user) {
     }
   }
 
-  renderResult({ info, groups, dimensionScores, acdiScore, level, rec });
+  renderResult({ info, groups, dimensionScores, acdiScore, level, rec, feedback });
 }
 
-function renderResult({ info, groups, dimensionScores, acdiScore, level, rec }) {
+function renderResult({ info, groups, dimensionScores, acdiScore, level, rec, feedback }) {
   const li = LEVEL_INFO[level];
   document.getElementById("acdiScore").textContent = acdiScore;
   document.getElementById("acdiLevelBadge").textContent = `Mức ${level} · ${li.title}`;
@@ -158,9 +165,11 @@ function renderResult({ info, groups, dimensionScores, acdiScore, level, rec }) 
   document.getElementById("acdiLevelRange").textContent = `Khoảng điểm dự kiến: ${li.range}`;
   document.getElementById("acdiLevelDesc").textContent = li.desc;
 
-  document.getElementById("highestGroupText").textContent = rec.highestRiskGroup;
-  document.getElementById("lowestGroupText").textContent = rec.bestMaintainedGroup;
-  document.getElementById("tipText").textContent = rec.tip;
+  // Nhãn tên nhóm vẫn lấy từ công thức cố định (rec); phần nhận xét chi tiết lấy từ AI (feedback),
+  // tự động rơi về nhận xét mặc định (feedback.source === "fallback") nếu gọi AI lỗi.
+  document.getElementById("highestGroupText").textContent = `${rec.highestRiskGroup}. ${feedback.highestRiskComment}`;
+  document.getElementById("lowestGroupText").textContent = `${rec.bestMaintainedGroup}. ${feedback.strengthComment}`;
+  document.getElementById("tipText").textContent = feedback.advice;
   document.getElementById("participantCodeBox").textContent = info.participantCode;
 
   new Chart(document.getElementById("radarChart"), {
