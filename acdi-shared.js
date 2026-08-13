@@ -231,7 +231,7 @@ CHỈ trả lời bằng MỘT SỐ NGUYÊN DUY NHẤT từ 0 đến 100 (điể
 
     const raw = await callAiApi({
       endpoint: cfg.endpoint, apiKey: cfg.apiKey, model: cfg.model,
-      messages: [{ role: "user", content: prompt }], maxTokens: 10,
+      messages: [{ role: "user", content: prompt }], maxTokens: 1500,
     });
     const match = String(raw).match(/-?\d+/);
     if (!match) throw new Error("Không đọc được số điểm từ phản hồi AI: " + raw);
