@@ -506,21 +506,31 @@ function validateGeneratedTest(data) {
 
 // Gọi AI để soạn 1 bộ đề mới theo tiêu chí. Ném lỗi nếu gọi AI thất bại hoặc JSON không hợp lệ
 // (nơi gọi hàm này nên tự bắt lỗi và dùng DEFAULT_ACDI_GROUPS/DEFAULT_SCENARIOS làm phương án dự phòng).
+//
+// LƯU Ý VỀ maxTokens: bộ đề đầy đủ (25 câu Likert + 5 tình huống tự luận, MỖI tình huống còn kèm
+// rubric "đáp án" keyPoints/riskKeywords) tạo ra JSON khá dài — nếu maxTokens quá thấp, phản hồi của
+// AI sẽ bị CẮT NGANG giữa chừng, khiến JSON.parse() lỗi (hoặc validateGeneratedTest() không qua vì
+// thiếu trường), và hệ thống sẽ ÂM THẦM rơi về DEFAULT_ACDI_GROUPS/DEFAULT_SCENARIOS (bộ đề mặc định
+// cứng trong code) — đây chính là nguyên nhân hay gặp khi thấy đề luôn giống nhau/đơn giản bất thường.
 export async function generateTestWithAI(criteria) {
   const cfg = await getApiConfig();
   const raw = await callAiApi({
     endpoint: cfg.endpoint, apiKey: cfg.apiKey, model: cfg.model,
     messages: [{ role: "user", content: GENERATION_INSTRUCTION_TEMPLATE(criteria) }],
-    maxTokens: 4000,
+    maxTokens: 8000,
   });
   const cleaned = String(raw).replace(/```json|```/g, "").trim();
   let parsed;
   try {
     parsed = JSON.parse(cleaned);
   } catch (e) {
+    // In log đủ để chẩn đoán: độ dài phản hồi + đoạn cuối (nếu bị cắt ngang do hết token, đoạn cuối
+    // thường dở dang, không đóng ngoặc) — xem console để biết chắc có phải do bị cắt hay không.
+    console.error(`Không parse được JSON đề thi từ AI (độ dài phản hồi: ${cleaned.length} ký tự). 300 ký tự cuối:`, cleaned.slice(-300));
     throw new Error("Không parse được JSON đề thi từ AI: " + cleaned.slice(0, 300));
   }
   if (!validateGeneratedTest(parsed)) {
+    console.error("Đề thi AI trả về không đúng cấu trúc yêu cầu. Dữ liệu nhận được:", parsed);
     throw new Error("Đề thi AI trả về không đúng cấu trúc yêu cầu.");
   }
   return { groups: parsed.groups, scenarios: parsed.scenarios };
