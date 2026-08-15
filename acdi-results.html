@@ -116,13 +116,18 @@ async function run(user) {
   const acdiScore = computeAcdiScore(questionnaireScore, scenarioScore);
   const level = classifyLevel(acdiScore);
 
+  // Xác định nhóm cao/thấp nhất bằng CÔNG THỨC CỐ ĐỊNH trước — đây là nguồn "sự thật" duy nhất,
+  // sau đó truyền cho AI để nó viết nhận xét đúng về 2 nhóm này (không để AI tự chọn nhóm khác,
+  // tránh tiêu đề và nội dung nhận xét bị lệch nhau).
+  const rec = buildRecommendation(dimensionScores, groups);
+
   // SAU KHI đã có điểm số cố định, gọi AI ĐÚNG 1 LẦN để viết nhận xét/lời khuyên cá nhân hoá
-  // (không được thay đổi điểm số). Nếu lỗi, hàm tự dùng buildRecommendation() làm dự phòng.
+  // (không được thay đổi điểm số, không được tự chọn nhóm khác với rec). Nếu lỗi, hàm tự dùng
+  // nhận xét dự phòng dựa trên rec.
   loadingState.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang chuẩn bị nhận xét dành riêng cho bạn...';
   const feedback = await generateFeedbackWithAI({
-    info, groups, scenarios, answers, scenarioAnswers, perScenario, dimensionScores, acdiScore, level,
+    info, groups, scenarios, answers, scenarioAnswers, perScenario, dimensionScores, acdiScore, level, rec,
   });
-  const rec = buildRecommendation(dimensionScores, groups); // vẫn giữ để có tên nhóm cao/thấp nhất hiển thị
 
   // Chỉ lưu vào Firestore một lần cho mỗi lần hoàn thành khảo sát (tránh trùng khi tải lại trang)
   let cached = null;

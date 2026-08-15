@@ -321,13 +321,16 @@ export function buildRecommendation(dimensionScores, groups = DEFAULT_ACDI_GROUP
 
 // ============ 5b. NHẬN XÉT / LỜI KHUYÊN CÁ NHÂN HOÁ — GỌI AI ĐÚNG 1 LẦN, SAU KHI ĐÃ CÓ ĐIỂM ============
 // QUAN TRỌNG: hàm này KHÔNG được dùng để tính hay sửa điểm số — điểm (dimensionScores/acdiScore/level)
-// đã được chốt bằng công thức cố định ở mục 2-4 TRƯỚC khi gọi hàm này. AI ở đây chỉ đọc lại đề, rubric
-// đáp án, câu trả lời thực tế của học sinh và điểm hệ thống đã chấm, để viết nhận xét/lời khuyên bằng
-// lời tự nhiên, cá nhân hoá hơn so với GROUP_TIPS tĩnh. Nếu gọi AI lỗi, dùng buildRecommendation()
+// VÀ việc xác định nhóm cao/thấp nhất (rec = buildRecommendation(...)) đã được chốt bằng công thức cố
+// định TRƯỚC khi gọi hàm này. AI KHÔNG được tự chọn nhóm khác để bàn luận — phải viết đúng về 2 nhóm
+// đã được xác định sẵn (rec.highestRiskGroup / rec.bestMaintainedGroup), nếu không sẽ bị lệch với tiêu
+// đề hiển thị (vốn lấy trực tiếp từ rec, không lấy từ AI). Nếu gọi AI lỗi, dùng buildRecommendation()
 // (thuần công thức, không cần mạng) làm phương án dự phòng — xem cách dùng ở acdi-results.html.
-export async function generateFeedbackWithAI({ info, groups, scenarios, answers, scenarioAnswers, perScenario, dimensionScores, acdiScore, level }) {
+export async function generateFeedbackWithAI({ info, groups, scenarios, answers, scenarioAnswers, perScenario, dimensionScores, acdiScore, level, rec }) {
   const li = LEVEL_INFO[level];
-  const groupSummary = groups.map((g) => `- ${g.title} (key:${g.key}): điểm ${dimensionScores[g.key]}/100`).join("\n");
+  // KHÔNG đưa nhãn kỹ thuật kiểu "(key:xxx)" vào đây — nếu có, AI hay chép nguyên xi kiểu nhãn đó vào
+  // câu trả lời cho người dùng, trông rất kỹ thuật/khó hiểu với học sinh. Chỉ đưa tên tiếng Việt + điểm.
+  const groupSummary = groups.map((g) => `- ${g.title}: điểm ${dimensionScores[g.key]}/100`).join("\n");
   const scenarioSummary = scenarios.map((sc) => {
     const ans = scenarioAnswers?.[sc.id];
     return `- ${sc.title}\n  Câu hỏi: ${sc.question}\n  Câu trả lời học sinh: "${String(ans || "(không trả lời)").slice(0, 400)}"\n  Điểm nguy cơ hệ thống đã chấm: ${perScenario?.[sc.id] ?? "-"}/100`;
@@ -346,16 +349,28 @@ Thông tin học sinh: cấp học ${info?.schoolLevel === "thpt" ? "THPT" : "TH
 Điểm 5 nhóm chỉ báo:
 ${groupSummary}
 
+HỆ THỐNG ĐÃ XÁC ĐỊNH SẴN (bằng công thức, không phải bạn quyết định):
+- Nhóm CÓ NGUY CƠ CAO NHẤT là: "${rec.highestRiskGroup}"
+- Nhóm DUY TRÌ TỐT NHẤT là: "${rec.bestMaintainedGroup}"
+Bạn BẮT BUỘC phải viết "highestRiskComment" về ĐÚNG nhóm "${rec.highestRiskGroup}" và "strengthComment" về
+ĐÚNG nhóm "${rec.bestMaintainedGroup}" nêu trên — KHÔNG được tự chọn nhóm khác để bàn luận, kể cả khi bạn
+thấy một nhóm khác có vẻ đáng chú ý hơn.
+
 Chi tiết 5 tình huống tự luận và điểm nguy cơ hệ thống đã chấm cho từng câu:
 ${scenarioSummary}
 
 Hãy trả lời CHỈ bằng JSON đúng schema sau, viết bằng tiếng Việt, giọng văn gần gũi, mang tính xây dựng,
 không phán xét, dựa sát vào câu trả lời thực tế của học sinh (không nói chung chung):
 {
-  "highestRiskComment": "1-2 câu nhận xét cụ thể về nhóm chỉ báo có điểm nguy cơ cao nhất, dựa trên các câu trả lời liên quan",
-  "strengthComment": "1-2 câu nhận xét về nhóm chỉ báo học sinh duy trì tốt nhất (điểm nguy cơ thấp nhất)",
-  "advice": "2-4 câu lời khuyên cụ thể, khả thi, phù hợp lứa tuổi/khối lớp, giúp học sinh cải thiện nhóm yếu nhất"
+  "highestRiskComment": "1-2 câu nhận xét cụ thể về nhóm \"${rec.highestRiskGroup}\", dựa trên các câu trả lời liên quan",
+  "strengthComment": "1-2 câu nhận xét về nhóm \"${rec.bestMaintainedGroup}\"",
+  "advice": "2-4 câu lời khuyên cụ thể, khả thi, phù hợp lứa tuổi/khối lớp, giúp học sinh cải thiện nhóm \"${rec.highestRiskGroup}\""
 }
+YÊU CẦU VỀ VĂN PHONG — RẤT QUAN TRỌNG:
+- Viết văn tự nhiên, dễ hiểu với học sinh, gọi tên nhóm CHỈ bằng tên tiếng Việt ở trên (ví dụ: "${rec.highestRiskGroup}").
+- TUYỆT ĐỐI KHÔNG được đưa vào câu trả lời bất kỳ nhãn kỹ thuật/mã nội bộ nào, ví dụ: "key:...", "g1q2",
+  "s3", tên biến, hay số liệu đặt trong ngoặc kiểu "(key:idea=20)". Nếu cần nêu điểm số, chỉ viết dạng
+  văn xuôi bình thường (ví dụ: "điểm 20/100"), không dùng ký hiệu kỹ thuật.
 CHỈ trả về JSON, không kèm giải thích, không markdown, không dấu backtick.`;
 
   try {
@@ -372,7 +387,6 @@ CHỈ trả về JSON, không kèm giải thích, không markdown, không dấu 
     return { ...parsed, source: "ai" };
   } catch (err) {
     console.warn("Tạo nhận xét cá nhân hoá bằng AI thất bại, dùng khuyến nghị mặc định:", err);
-    const rec = buildRecommendation(dimensionScores, groups);
     return {
       highestRiskComment: `Nhóm "${rec.highestRiskGroup}" đang là nhóm bạn cần chú ý nhất.`,
       strengthComment: `Nhóm "${rec.bestMaintainedGroup}" là nhóm bạn duy trì tốt nhất.`,
