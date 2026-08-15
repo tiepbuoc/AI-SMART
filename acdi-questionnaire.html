@@ -55,9 +55,7 @@ const ACDI_GROUPS = (test && Array.isArray(test.groups) && test.groups.length ==
 let answers = {};
 try { answers = JSON.parse(localStorage.getItem("acdi_answers") || "{}"); } catch { answers = {}; }
 
-let groupIndex = 0;
-try { groupIndex = Number(localStorage.getItem("acdi_group_index") || 0) || 0; } catch { groupIndex = 0; }
-groupIndex = Math.min(Math.max(groupIndex, 0), ACDI_GROUPS.length - 1);
+let groupIndex = 0; // luôn bắt đầu ở Nhóm 1 mỗi khi vào trang này (không nhớ vị trí giữa các lần)
 
 const groupTitleEl = document.getElementById("groupTitle");
 const groupDescEl = document.getElementById("groupDesc");
@@ -113,7 +111,6 @@ function groupComplete(g) {
 backBtn.onclick = () => {
   if (groupIndex === 0) { window.location.href = "acdi-info.html"; return; }
   groupIndex--;
-  localStorage.setItem("acdi_group_index", String(groupIndex));
   renderGroup();
   window.scrollTo({ top: 0, behavior: "smooth" });
 };
@@ -129,7 +126,6 @@ nextBtn.onclick = () => {
     return;
   }
   groupIndex++;
-  localStorage.setItem("acdi_group_index", String(groupIndex));
   renderGroup();
   window.scrollTo({ top: 0, behavior: "smooth" });
 };
