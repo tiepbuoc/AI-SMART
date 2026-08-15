@@ -49,8 +49,9 @@ let test = null;
 try { test = JSON.parse(localStorage.getItem("acdi_test") || "null"); } catch { test = null; }
 const SCENARIOS = (test && Array.isArray(test.scenarios) && test.scenarios.length === 5) ? test.scenarios : DEFAULT_SCENARIOS;
 
+// Luôn bắt đầu với đáp án TRỐNG mỗi khi vào trang này (không khôi phục đáp án cũ từ lần trước).
 let scenarioAnswers = {};
-try { scenarioAnswers = JSON.parse(localStorage.getItem("acdi_scenarios") || "{}"); } catch { scenarioAnswers = {}; }
+localStorage.setItem("acdi_scenarios", JSON.stringify(scenarioAnswers));
 
 let idx = 0; // luôn bắt đầu ở Tình huống 1 mỗi khi vào trang này (không nhớ vị trí giữa các lần)
 

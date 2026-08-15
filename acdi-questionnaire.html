@@ -52,8 +52,9 @@ let test = null;
 try { test = JSON.parse(localStorage.getItem("acdi_test") || "null"); } catch { test = null; }
 const ACDI_GROUPS = (test && Array.isArray(test.groups) && test.groups.length === 5) ? test.groups : DEFAULT_ACDI_GROUPS;
 
+// Luôn bắt đầu với đáp án TRỐNG mỗi khi vào trang này (không khôi phục đáp án cũ từ lần trước).
 let answers = {};
-try { answers = JSON.parse(localStorage.getItem("acdi_answers") || "{}"); } catch { answers = {}; }
+localStorage.setItem("acdi_answers", JSON.stringify(answers));
 
 let groupIndex = 0; // luôn bắt đầu ở Nhóm 1 mỗi khi vào trang này (không nhớ vị trí giữa các lần)
 
