@@ -83,7 +83,7 @@ const ACI_RUBRIC = `RUBRIC CHẤM ĐIỂM CỐ ĐỊNH (áp dụng y hệt cho m
   81-100: effort gần như không có, aci rất cao — ỷ lại AI rõ rệt, nên điều chỉnh thói quen`;
 
 // ============ 3. HÀM GỌI API (dùng chung, theo định dạng OpenAI-compatible) ============
-export async function callAiApi({ endpoint, apiKey, model, messages, maxTokens = 6543 }) {
+export async function callAiApi({ endpoint, apiKey, model, messages, maxTokens = 20000 }) {
   const cleanEndpoint = endpoint.trim().replace(/\/$/, "");
   const res = await fetch(`${cleanEndpoint}/chat/completions`, {
     method: "POST",
@@ -125,7 +125,7 @@ Số phần tử của mảng ngoài PHẢI đúng bằng số prompt (${prompts
     apiKey,
     model,
     messages: [{ role: "user", content: instruction }],
-    maxTokens: 6543,
+    maxTokens: 20000,
   });
 
   const cleaned = raw.replace(/```json|```/g, "").trim();
