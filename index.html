@@ -6,13 +6,6 @@
 <title>AI SMART — Học cùng AI đúng cách</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link rel="stylesheet" href="style.css" />
-<style>
-  .role-choice{ display:flex; gap:10px; margin:2px 0 4px; }
-  .role-option{ flex:1; border:1.5px solid var(--border); border-radius:12px; padding:10px 8px;
-    text-align:center; cursor:pointer; font-size:12.5px; font-weight:600; color:var(--text-mid); }
-  .role-option input{ display:none; }
-  .role-option:has(input:checked){ border-color:var(--orange); color:var(--orange2); background:rgba(230,126,34,0.06); }
-</style>
 </head>
 <body>
 
@@ -26,16 +19,6 @@
     </div>
     <input id="authEmail" type="email" placeholder="Email" autocomplete="username" />
     <input id="authPassword" type="password" placeholder="Mật khẩu" autocomplete="current-password" />
-    <div id="roleChoice" class="role-choice" style="display:none;">
-      <label class="role-option">
-        <input type="radio" name="authRole" value="student" checked />
-        <span><i class="fa-solid fa-user-graduate"></i> Tôi là học sinh</span>
-      </label>
-      <label class="role-option">
-        <input type="radio" name="authRole" value="teacher" />
-        <span><i class="fa-solid fa-chalkboard-user"></i> Tôi là giáo viên</span>
-      </label>
-    </div>
     <button id="submitBtn" class="primary-btn">Đăng nhập</button>
     <div id="authMessage" class="auth-message"></div>
   </div>
@@ -95,11 +78,6 @@
         <h2>AI Learning Passport</h2>
         <p>Xem lại lịch sử sử dụng AI, biểu đồ tiến bộ, và chỉ số AI Crutch Index (ACI) đánh giá mức độ phụ thuộc vào AI.</p>
       </a>
-      <a class="feature-card" href="acdi-intro.html">
-        <div class="feat-icon"><i class="fa-solid fa-gauge-high"></i></div>
-        <h2>ACDI Check</h2>
-        <p>Làm bảng hỏi và tình huống ngắn để đo Chỉ số lệ thuộc nhận thức vào AI (ACDI), kèm khuyến nghị điều chỉnh phù hợp với bạn.</p>
-      </a>
     </div>
 
     <div style="text-align:center; margin-top:40px;">
@@ -115,7 +93,7 @@
 
 <script src="nav.js"></script>
 <script type="module">
-  import { watchAuth, login, signup, logout, translateFirebaseError, getUserProfile } from "./auth-web.js";
+  import { watchAuth, login, signup, logout, translateFirebaseError } from "./auth-web.js";
 
   const authScreen = document.getElementById("authScreen");
   const dashboard = document.getElementById("dashboard");
@@ -125,7 +103,6 @@
   const submitBtn = document.getElementById("submitBtn");
   const tabLogin = document.getElementById("tabLogin");
   const tabSignup = document.getElementById("tabSignup");
-  const roleChoice = document.getElementById("roleChoice");
 
   const nav = renderSiteNav("home");
 
@@ -135,7 +112,6 @@
     tabLogin.classList.toggle("active", m === "login");
     tabSignup.classList.toggle("active", m === "signup");
     submitBtn.textContent = m === "login" ? "Đăng nhập" : "Đăng ký";
-    roleChoice.style.display = m === "signup" ? "flex" : "none";
     authMessage.textContent = "";
   }
   tabLogin.onclick = () => setMode("login");
@@ -150,8 +126,7 @@
       if (mode === "login") await login(email, password);
       else {
         if (password.length < 6) { authMessage.textContent = "Mật khẩu phải có ít nhất 6 ký tự."; return; }
-        const role = document.querySelector('input[name="authRole"]:checked').value;
-        await signup(email, password, role);
+        await signup(email, password);
       }
     } catch (err) {
       authMessage.textContent = translateFirebaseError(err);
@@ -159,13 +134,7 @@
   };
 
   watchAuth(
-    async (user) => {
-      // Giáo viên có trang riêng — điều hướng ngay, không hiện dashboard học sinh
-      const profile = await getUserProfile(user.uid);
-      if (profile.role === "teacher") {
-        window.location.href = "teacher.html";
-        return;
-      }
+    (user) => {
       authScreen.style.display = "none";
       dashboard.style.display = "block";
       nav.setUser(user.email, () => logout());

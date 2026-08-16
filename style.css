@@ -172,7 +172,7 @@ a{ color:var(--orange); }
 .hero-h1 em{ font-style:italic; color:var(--orange); font-weight:300; }
 .hero-sub{ font-size:15px; color:var(--text-mid); max-width:520px; margin:0 auto; line-height:1.6; }
 
-.landing-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-top:36px; }
+.landing-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:20px; margin-top:36px; max-width:760px; margin-left:auto; margin-right:auto; }
 
 .feature-card{
   background:var(--card-bg); border:1px solid var(--border); border-radius:28px; padding:30px 26px;
@@ -188,7 +188,7 @@ a{ color:var(--orange); }
 .feature-card p{ font-size:13.5px; color:var(--text-mid); line-height:1.65; margin:0; }
 
 @media (max-width:1000px){
-  .landing-grid{ grid-template-columns:repeat(2,1fr); }
+  .landing-grid{ grid-template-columns:1fr; max-width:420px; }
 }
 @media (max-width:700px){
   .landing-grid{ grid-template-columns:1fr; }

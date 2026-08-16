@@ -9,7 +9,7 @@ import {
   signOut,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  doc, setDoc, getDoc, serverTimestamp,
+  doc, setDoc, serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 export function translateFirebaseError(err) {
@@ -30,13 +30,10 @@ export function login(email, password) {
   return signInWithEmailAndPassword(auth, email, password);
 }
 
-// role: "student" | "teacher"
-export async function signup(email, password, role = "student") {
+export async function signup(email, password) {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
   await setDoc(doc(db, "users", cred.user.uid), {
     email,
-    role: role === "teacher" ? "teacher" : "student",
-    classId: null, // học sinh sẽ điền khi tham gia lớp; giáo viên không dùng field này
     createdAt: serverTimestamp(),
   });
   return cred;
@@ -51,15 +48,6 @@ export function watchAuth(onLogin, onLogout) {
     if (user) onLogin(user);
     else onLogout();
   });
-}
-
-// Lấy hồ sơ (role, classId...) của user hiện tại. Trả về { role: "student", classId: null } nếu chưa có hồ sơ
-// (ví dụ tài khoản được tạo trước khi tính năng phân vai trò ra đời).
-export async function getUserProfile(uid) {
-  const snap = await getDoc(doc(db, "users", uid));
-  if (!snap.exists()) return { role: "student", classId: null };
-  const data = snap.data();
-  return { role: data.role === "teacher" ? "teacher" : "student", classId: data.classId || null };
 }
 
 // ---- Cấu hình API cố định (theo yêu cầu, không cần trang Cài đặt nữa) ----

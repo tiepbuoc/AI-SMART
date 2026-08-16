@@ -1,15 +1,10 @@
-// nav.js — Thanh menu DÙNG CHUNG cho mọi trang (index/chatbot/passport).
+// nav.js — Thanh menu DÙNG CHUNG cho mọi trang AI SMART (index/chatbot/passport).
 // Chỉ có 1 nguồn markup+logic duy nhất ở đây, đảm bảo mọi trang hiển thị
 // thanh menu giống hệt nhau tuyệt đối (không bị lệch giữa các trang).
 
-const STUDENT_NAV_LINKS = [
+const NAV_LINKS = [
   { key: "chatbot", href: "chatbot.html", icon: "fa-comments", label: "AI SMART Chatbot" },
   { key: "passport", href: "passport.html", icon: "fa-route", label: "Learning Passport" },
-  { key: "acdi", href: "acdi-intro.html", icon: "fa-gauge-high", label: "ACDI Check" },
-];
-
-const TEACHER_NAV_LINKS = [
-  { key: "teacher", href: "teacher.html", icon: "fa-chalkboard-user", label: "Lớp học của tôi" },
 ];
 
 function truncateEmail(email) {
@@ -17,9 +12,7 @@ function truncateEmail(email) {
   return email.slice(0, 5) + "...";
 }
 
-// role: "student" (mặc định) | "teacher" — quyết định bộ menu hiển thị
-function renderSiteNav(activeKey, role = "student") {
-  const NAV_LINKS = role === "teacher" ? TEACHER_NAV_LINKS : STUDENT_NAV_LINKS;
+function renderSiteNav(activeKey) {
   const wrap = document.createElement("div");
   wrap.innerHTML = `
     <nav id="siteNav" class="site-nav">
