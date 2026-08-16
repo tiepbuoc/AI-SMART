@@ -163,7 +163,7 @@
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
 
 <script type="module">
-import { watchAuth, getApiConfig, logout } from "./auth-web.js";
+import { watchAuth, getApiConfig, logout, getUserProfile } from "./auth-web.js";
 import { db } from "./firebase-config.js";
 import {
   collection, addDoc, updateDoc, deleteDoc, doc, getDocs, query, orderBy, serverTimestamp,
@@ -209,6 +209,8 @@ sidebarOverlay.onclick = () => { sidebar.classList.remove("open"); sidebarOverla
 
 watchAuth(
   async (user) => {
+    const profile = await getUserProfile(user.uid);
+    if (profile.role === "teacher") { window.location.href = "teacher.html"; return; }
     currentUser = user;
     apiConfig = await getApiConfig();
     guard.style.display = "none";

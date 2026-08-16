@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Trang giáo viên — AI SMART</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="style.css" />
+<style>
+  .code-card{ display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .code-box{ font-family:'Fraunces',serif; font-size:32px; font-weight:600; letter-spacing:4px;
+    color:var(--orange2); background:var(--orange-pale); border:1.5px dashed var(--orange);
+    border-radius:16px; padding:10px 22px; }
+  .copy-btn{ padding:9px 16px; border:1.5px solid var(--border); border-radius:12px; background:#fff;
+    font-size:12.5px; font-weight:700; color:var(--text-dark); cursor:pointer; }
+  .copy-btn:hover{ border-color:var(--orange); color:var(--orange2); }
+  .stat-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:20px 0; }
+  .stat-card{ background:var(--card-bg); border:1.5px solid var(--border); border-radius:20px; padding:18px 20px; }
+  .stat-card .num{ font-family:'Fraunces',serif; font-size:28px; font-weight:600; color:var(--orange2); }
+  .stat-card .label{ font-size:11.5px; color:var(--text-mid); margin-top:4px; }
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  th,td{ text-align:left; padding:10px 8px; border-bottom:1px solid var(--border); }
+  th{ font-size:11px; color:var(--text-mid); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; }
+  .pill{ font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px; color:#fff; }
+  .pill.low{ background:var(--green); }
+  .pill.mid{ background:var(--gold); }
+  .pill.high{ background:var(--red); }
+  .pill.na{ background:var(--text-dim); }
+  .empty-state{ text-align:center; padding:40px 20px; color:var(--text-mid); font-size:13.5px; }
+  @media (max-width:800px){ .stat-grid{ grid-template-columns:repeat(2,1fr); } }
+  .export-btn{
+    padding:9px 16px; border:1.5px solid var(--border); border-radius:12px; background:#fff;
+    font-size:12px; font-weight:700; color:var(--text-dark); cursor:pointer; display:inline-flex; gap:7px; align-items:center;
+  }
+  .export-btn:hover{ border-color:var(--orange); color:var(--orange2); }
+</style>
+</head>
+<body>
+
+<div id="guard" class="auth-screen"><p>Đang kiểm tra đăng nhập...</p></div>
+
+<div id="page" style="display:none;">
+  <main class="content">
+    <div class="section-label"><i class="fa-solid fa-chalkboard-user"></i> Trang giáo viên</div>
+    <h2 class="section-title">Lớp học của bạn</h2>
+
+    <div class="card code-card">
+      <div>
+        <div style="font-size:12.5px; color:var(--text-mid); margin-bottom:8px;">Mã lớp học — gửi mã này cho học sinh để các em tham gia ở trang Learning Passport</div>
+        <div id="classCode" class="code-box">------</div>
+      </div>
+      <button id="copyCodeBtn" class="copy-btn"><i class="fa-solid fa-copy"></i> Sao chép mã</button>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card"><div id="statMembers" class="num">-</div><div class="label">Học sinh trong lớp</div></div>
+      <div class="stat-card"><div id="statAvgAci" class="num">-</div><div class="label">ACI trung bình cả lớp</div></div>
+      <div class="stat-card"><div id="statHighRisk" class="num">-</div><div class="label">Học sinh rủi ro cao</div></div>
+      <div class="stat-card"><div id="statAvgEffort" class="num">-</div><div class="label">Nỗ lực tự thân TB</div></div>
+    </div>
+
+    <div class="card">
+      <h3 class="section-title" style="font-size:15px;">Danh sách học sinh</h3>
+      <div id="tableWrap">
+        <table>
+          <thead>
+            <tr><th>Học sinh</th><th>ACI TB</th><th>Nỗ lực TB</th><th>Độ phức tạp TB</th><th>Số câu hỏi</th><th>Mức rủi ro</th><th>Hoạt động gần nhất</th></tr>
+          </thead>
+          <tbody id="membersBody"></tbody>
+        </table>
+        <div id="emptyState" class="empty-state" style="display:none;">
+          Chưa có học sinh nào tham gia lớp. Hãy gửi mã lớp ở trên cho học sinh, các em vào trang <b>Learning Passport</b> để nhập mã tham gia.
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="nav.js"></script>
+<script type="module">
+import { watchAuth, logout, getUserProfile } from "./auth-web.js";
+import { getOrCreateTeacherClass, listClassMembers } from "./classes-shared.js";
+
+const guard = document.getElementById("guard");
+const page = document.getElementById("page");
+const classCodeEl = document.getElementById("classCode");
+const copyCodeBtn = document.getElementById("copyCodeBtn");
+const membersBody = document.getElementById("membersBody");
+const emptyState = document.getElementById("emptyState");
+
+function riskPill(band) {
+  if (!band) return `<span class="pill na">Chưa có dữ liệu</span>`;
+  const labelMap = { low: "Thấp", mid: "Trung bình", high: "Cao" };
+  return `<span class="pill ${band}">${labelMap[band] || band}</span>`;
+}
+
+function formatTime(iso) {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "-";
+  return d.toLocaleString("vi-VN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+watchAuth(
+  async (user) => {
+    const profile = await getUserProfile(user.uid);
+    if (profile.role !== "teacher") {
+      // Tài khoản học sinh lỡ vào trang này -> đưa về trang của học sinh
+      window.location.href = "index.html";
+      return;
+    }
+    guard.style.display = "none";
+    page.style.display = "block";
+    const nav = renderSiteNav("teacher", "teacher");
+    nav.setUser(user.email, () => logout());
+
+    const cls = await getOrCreateTeacherClass(user.uid, user.email);
+    classCodeEl.textContent = cls.code;
+    copyCodeBtn.onclick = () => {
+      navigator.clipboard.writeText(cls.code);
+      copyCodeBtn.innerHTML = '<i class="fa-solid fa-check"></i> Đã sao chép';
+      setTimeout(() => { copyCodeBtn.innerHTML = '<i class="fa-solid fa-copy"></i> Sao chép mã'; }, 1500);
+    };
+
+    const members = await listClassMembers(cls.id);
+    renderMembers(members);
+  },
+  () => { window.location.href = "index.html"; }
+);
+
+function renderMembers(members) {
+  document.getElementById("statMembers").textContent = members.length;
+
+  const withData = members.filter((m) => m.avgAci !== null && m.avgAci !== undefined);
+  const avg = (key) => withData.length
+    ? Math.round(withData.reduce((s, m) => s + (m[key] || 0), 0) / withData.length)
+    : "-";
+  document.getElementById("statAvgAci").textContent = avg("avgAci");
+  document.getElementById("statAvgEffort").textContent = avg("avgEffort");
+  document.getElementById("statHighRisk").textContent = members.filter((m) => m.riskBand === "high").length;
+
+  if (members.length === 0) {
+    emptyState.style.display = "block";
+    membersBody.innerHTML = "";
+    return;
+  }
+  emptyState.style.display = "none";
+
+  membersBody.innerHTML = "";
+  members
+    .slice()
+    .sort((a, b) => (b.avgAci || 0) - (a.avgAci || 0))
+    .forEach((m) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td></td>
+        <td>${m.avgAci ?? "-"}</td>
+        <td>${m.avgEffort ?? "-"}</td>
+        <td>${m.avgComplexity ?? "-"}</td>
+        <td>${m.entryCount ?? 0}</td>
+        <td>${riskPill(m.riskBand)}</td>
+        <td>${formatTime(m.lastActive)}</td>
+      `;
+      tr.children[0].textContent = m.email || m.uid;
+      membersBody.appendChild(tr);
+    });
+}
+</script>
+</body>
+</html>

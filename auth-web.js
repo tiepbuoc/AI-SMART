@@ -9,7 +9,7 @@ import {
   signOut,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  doc, setDoc, serverTimestamp,
+  doc, setDoc, getDoc, serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 export function translateFirebaseError(err) {
@@ -30,10 +30,13 @@ export function login(email, password) {
   return signInWithEmailAndPassword(auth, email, password);
 }
 
-export async function signup(email, password) {
+// role: "student" | "teacher"
+export async function signup(email, password, role = "student") {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
   await setDoc(doc(db, "users", cred.user.uid), {
     email,
+    role: role === "teacher" ? "teacher" : "student",
+    classId: null, // học sinh sẽ điền khi tham gia lớp; giáo viên không dùng field này
     createdAt: serverTimestamp(),
   });
   return cred;
@@ -50,10 +53,19 @@ export function watchAuth(onLogin, onLogout) {
   });
 }
 
+// Lấy hồ sơ (role, classId...) của user hiện tại. Trả về { role: "student", classId: null } nếu chưa có hồ sơ
+// (ví dụ tài khoản được tạo trước khi tính năng phân vai trò ra đời).
+export async function getUserProfile(uid) {
+  const snap = await getDoc(doc(db, "users", uid));
+  if (!snap.exists()) return { role: "student", classId: null };
+  const data = snap.data();
+  return { role: data.role === "teacher" ? "teacher" : "student", classId: data.classId || null };
+}
+
 // ---- Cấu hình API cố định (theo yêu cầu, không cần trang Cài đặt nữa) ----
 const FIXED_API_CONFIG = {
   endpoint: "https://api.shopaikey.com/v1",
-  model: "gpt-5-nano",
+  model: "gpt-5.4-nano-2026-03-17",
   apiKey: "sk-uQmI5tk7o5FdWLq852gCLO2xZTd5OmG2K9RKy7C3raEqGx6v",
 };
 
