@@ -33,6 +33,16 @@
     font-size:12px; font-weight:700; color:var(--text-dark); cursor:pointer; display:inline-flex; gap:7px; align-items:center;
   }
   .export-btn:hover{ border-color:var(--orange); color:var(--orange2); }
+
+  /* ══════ Biểu đồ tổng quan lớp học ══════ */
+  .charts-section{ margin-top:22px; }
+  .charts-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:14px; }
+  .chart-card{ background:var(--card-bg); border:1.5px solid var(--border); border-radius:20px; padding:18px 20px; }
+  .chart-card h4{ font-size:13px; font-weight:700; color:var(--text-dark); margin:0 0 4px; display:flex; align-items:center; gap:8px; }
+  .chart-card .chart-sub{ font-size:11.5px; color:var(--text-mid); margin-bottom:12px; }
+  .chart-card canvas{ max-height:250px; }
+  .chart-card.full{ grid-column:1 / -1; }
+  @media (max-width:800px){ .charts-grid{ grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
@@ -73,10 +83,36 @@
         </div>
       </div>
     </div>
+
+    <!-- ═══════════ Biểu đồ tổng quan — trực quan hóa dữ liệu ACI của lớp ═══════════ -->
+    <div class="charts-section">
+      <div class="section-label"><i class="fa-solid fa-chart-simple"></i> Biểu đồ tổng quan</div>
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h4><i class="fa-solid fa-shield-heart"></i> Phân bố mức rủi ro</h4>
+          <div class="chart-sub">Số học sinh theo mức độ lệ thuộc AI</div>
+          <canvas id="riskChart" height="220"></canvas>
+        </div>
+        <div class="chart-card">
+          <h4><i class="fa-solid fa-ranking-star"></i> Top học sinh ACI cao nhất</h4>
+          <div class="chart-sub">5 học sinh có chỉ số phụ thuộc AI (ACI) cao nhất lớp</div>
+          <canvas id="topAciChart" height="220"></canvas>
+        </div>
+        <div class="chart-card full">
+          <h4><i class="fa-solid fa-braille"></i> Tương quan ACI &amp; Nỗ lực tự thân</h4>
+          <div class="chart-sub">Mỗi điểm là một học sinh — góc dưới bên phải (ACI cao, nỗ lực thấp) là nhóm cần chú ý</div>
+          <canvas id="aciEffortChart" height="200"></canvas>
+        </div>
+      </div>
+      <div id="chartsEmpty" class="empty-state" style="display:none; margin-top:14px;">
+        Chưa có đủ dữ liệu để hiển thị biểu đồ. Biểu đồ sẽ xuất hiện khi có học sinh đã dùng AI SMART Chatbot.
+      </div>
+    </div>
   </main>
 </div>
 
 <script src="nav.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script type="module">
 import { watchAuth, logout, getUserProfile } from "./auth-web.js";
 import { getOrCreateTeacherClass, listClassMembers } from "./classes-shared.js";
@@ -142,6 +178,7 @@ function renderMembers(members) {
   if (members.length === 0) {
     emptyState.style.display = "block";
     membersBody.innerHTML = "";
+    renderCharts([]);
     return;
   }
   emptyState.style.display = "none";
@@ -164,7 +201,121 @@ function renderMembers(members) {
       tr.children[0].textContent = m.email || m.uid;
       membersBody.appendChild(tr);
     });
+
+  renderCharts(withData);
 }
+
+// ═══════════ Biểu đồ tổng quan (Chart.js) ═══════════
+const RISK_COLORS = { low: "#1f9d6c", mid: "#f39c12", high: "#e74c3c", na: "#c8c8c8" };
+const RISK_LABELS = { low: "Thấp", mid: "Trung bình", high: "Cao", na: "Chưa có dữ liệu" };
+
+let riskChartInstance = null;
+let topAciChartInstance = null;
+let aciEffortChartInstance = null;
+
+function destroyChart(instance) {
+  if (instance) instance.destroy();
+  return null;
+}
+
+function shortName(m) {
+  const email = m.email || m.uid || "";
+  return email.includes("@") ? email.split("@")[0] : email.slice(0, 10);
+}
+
+function renderCharts(withData) {
+  const chartsGrid = document.querySelector(".charts-grid");
+  const chartsEmpty = document.getElementById("chartsEmpty");
+
+  riskChartInstance = destroyChart(riskChartInstance);
+  topAciChartInstance = destroyChart(topAciChartInstance);
+  aciEffortChartInstance = destroyChart(aciEffortChartInstance);
+
+  if (withData.length === 0) {
+    chartsGrid.style.display = "none";
+    chartsEmpty.style.display = "block";
+    return;
+  }
+  chartsGrid.style.display = "grid";
+  chartsEmpty.style.display = "none";
+
+  // 1) Phân bố mức rủi ro (doughnut)
+  const bands = ["low", "mid", "high", "na"];
+  const counts = bands.map((b) => b === "na"
+    ? withData.filter((m) => !m.riskBand).length
+    : withData.filter((m) => m.riskBand === b).length);
+
+  riskChartInstance = new Chart(document.getElementById("riskChart"), {
+    type: "doughnut",
+    data: {
+      labels: bands.map((b) => RISK_LABELS[b]),
+      datasets: [{
+        data: counts,
+        backgroundColor: bands.map((b) => RISK_COLORS[b]),
+        borderWidth: 0,
+      }],
+    },
+    options: {
+      plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 11 } } } },
+      cutout: "62%",
+    },
+  });
+
+  // 2) Top 5 học sinh ACI cao nhất (horizontal bar)
+  const top5 = withData.slice().sort((a, b) => (b.avgAci || 0) - (a.avgAci || 0)).slice(0, 5);
+  topAciChartInstance = new Chart(document.getElementById("topAciChart"), {
+    type: "bar",
+    data: {
+      labels: top5.map(shortName),
+      datasets: [{
+        label: "ACI trung bình",
+        data: top5.map((m) => m.avgAci ?? 0),
+        backgroundColor: top5.map((m) => RISK_COLORS[m.riskBand] || "#e67e22"),
+        borderRadius: 6,
+      }],
+    },
+    options: {
+      indexAxis: "y",
+      scales: { x: { min: 0, max: 100, ticks: { stepSize: 20 } } },
+      plugins: { legend: { display: false } },
+    },
+  });
+
+  // 3) Tương quan ACI & Nỗ lực tự thân (scatter, màu theo mức rủi ro)
+  const scatterPoints = withData.map((m) => ({
+    x: m.avgEffort ?? 0,
+    y: m.avgAci ?? 0,
+    label: shortName(m),
+    color: RISK_COLORS[m.riskBand] || "#95a5a6",
+  }));
+  aciEffortChartInstance = new Chart(document.getElementById("aciEffortChart"), {
+    type: "scatter",
+    data: {
+      datasets: [{
+        label: "Học sinh",
+        data: scatterPoints,
+        backgroundColor: scatterPoints.map((p) => p.color),
+        pointRadius: 6,
+        pointHoverRadius: 8,
+      }],
+    },
+    options: {
+      scales: {
+        x: { title: { display: true, text: "Nỗ lực tự thân (TB)", font: { size: 11 } }, min: 0, max: 100 },
+        y: { title: { display: true, text: "ACI (TB)", font: { size: 11 } }, min: 0, max: 100 },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `${ctx.raw.label}: ACI ${ctx.raw.y}, Nỗ lực ${ctx.raw.x}`,
+          },
+        },
+      },
+    },
+  });
+}
+
 </script>
 </body>
 </html>
