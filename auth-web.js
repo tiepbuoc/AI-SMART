@@ -66,7 +66,7 @@ export async function getUserProfile(uid) {
 const FIXED_API_CONFIG = {
   endpoint: "https://api.shopaikey.com/v1",
   model: "gpt-5-nano",
-  apiKey: "sk-uQmI5tk7o5FdWLq852gCLO2xZTd5OmG2K9RKy7C3raEqGx6v",
+  apiKey: "sk-4150297863e3eee405805e8609648e6c5cebb1b502ffb46e",
 };
 
 export async function getApiConfig() {
