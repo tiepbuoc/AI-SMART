@@ -1,0 +1,160 @@
+:root{--bg:#F4F6FF;--line:#E6ECFF;--bd:#CBD5F5;--ink:#14163B;--soft:#4B5280;--card:#fff;--blue:#2C4BFF;--on:#fff;--yel:#FFE14D;--fix:#14163B;--grn:#46D9A0;--pink:#FF9CBF;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;font:400 16px/1.6 "Be Vietnam Pro",system-ui,sans-serif;color:var(--ink);background-color:var(--bg);min-height:100vh}
+.top{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between;padding:16px 20px 6px;max-width:1000px;margin:auto}
+.logo{font:600 24px "Be Vietnam Pro",sans-serif;background:none;border:0;color:var(--ink);cursor:pointer;padding:0}
+.logo i{font-style:normal;background:var(--yel);color:var(--fix);padding:0 9px;border-radius:8px;margin-left:5px;display:inline-block;transform:rotate(-5deg)}
+nav{display:flex;flex-wrap:wrap;gap:6px}
+nav button{font:500 15px "Be Vietnam Pro",sans-serif;color:var(--ink);background:none;border:1px solid transparent;border-radius:10px;padding:6px 12px;cursor:pointer}
+nav button[aria-current="page"]{background:var(--yel);color:var(--fix);border-color:var(--ink)}
+main{max-width:1000px;margin:auto;padding:10px 20px 60px}
+h1{font-size:clamp(34px,7vw,62px);line-height:1.08;font-weight:600;letter-spacing:-.02em;margin:.15em 0 .3em}
+h2{font-size:clamp(26px,4.5vw,36px);line-height:1.15;font-weight:600;margin:.2em 0 .4em}
+h3{font-size:19px;margin:0 0 4px}
+p{margin:.4em 0}.soft{color:var(--soft)}
+.hero{display:grid;grid-template-columns:1.15fr 1fr;gap:34px;align-items:center;padding:22px 0}
+@media(max-width:780px){.hero{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:18px 20px}
+.chip{display:inline-block;padding:2px 11px;border:1px solid var(--bd);border-radius:99px;font-weight:500;font-size:14px;margin:3px 4px 3px 0;background:var(--card)}
+.chip.must{background:var(--line)}.chip.pick{background:var(--yel);color:var(--fix)}.chip.q{border-style:dashed;color:var(--soft)}
+.btn{font:600 16px "Be Vietnam Pro",sans-serif;padding:12px 22px;border:1px solid var(--bd);border-radius:12px;background:var(--blue);color:var(--on);cursor:pointer}
+.btn:active{transform:scale(.98)}
+.btn.alt{background:var(--card);color:var(--ink)}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:12px;margin:18px 0}
+.notes{margin:26px 0;display:grid;gap:10px;max-width:640px}
+.notes p{margin:0;padding-left:14px;border-left:5px solid var(--yel)}
+.q{margin:12px 0;padding:14px 16px}
+.q p{margin:0 0 8px;font-weight:500}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.opt{position:relative}
+.opt input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.opt span{display:block;padding:6px 14px;border:1px solid var(--bd);border-radius:99px;font-size:14px;font-weight:500;background:var(--card)}
+.opt input:checked+span{background:var(--blue);color:var(--on)}
+.opt.sub input:checked+span{background:var(--yel);color:var(--fix)}
+.opt input:focus-visible+span{outline:3px solid var(--blue);outline-offset:2px}
+.msg{color:#C62255;font-weight:500;min-height:1.5em}
+.bar{height:12px;border:1px solid var(--bd);border-radius:8px;background:var(--card);overflow:hidden;margin:4px 0 10px}
+.bar b{display:block;height:100%;background:var(--grn)}
+.rank{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rank .no{font-weight:600;font-size:28px;background:var(--yel);color:var(--fix);border:1px solid var(--bd);border-radius:10px;padding:0 12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+details.card{padding:0}
+details summary{cursor:pointer;padding:14px 18px;font-weight:600;list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary small{display:block;font-weight:400;color:var(--soft)}
+details[open] summary{border-bottom:1px dashed var(--bd)}
+details .in{padding:12px 18px 16px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 18px}
+.filters button{font:500 14px "Be Vietnam Pro",sans-serif;padding:5px 13px;border:1px solid var(--bd);border-radius:99px;background:var(--card);color:var(--ink);cursor:pointer}
+.filters button[aria-pressed="true"]{background:var(--blue);color:var(--on)}
+.chk{display:flex;gap:10px;align-items:flex-start;margin:8px 0}
+.chk input{width:20px;height:20px;margin-top:4px;accent-color:var(--blue)}
+.note{background:var(--yel);color:var(--fix);border:1px solid var(--bd);border-radius:12px;padding:10px 14px;margin:20px 0;font-size:15px}
+[hidden]{display:none!important}
+nav a{font:500 15px "Be Vietnam Pro",sans-serif;color:var(--ink);text-decoration:none;border:1px solid transparent;border-radius:10px;padding:6px 12px}
+nav a[aria-current="page"]{background:var(--yel);color:var(--fix);border-color:var(--ink)}
+.logo{text-decoration:none;display:inline-block}
+.sm{padding:6px 14px;font-size:14px;text-decoration:none;display:inline-block}
+a.btn{text-decoration:none;display:inline-block}
+select,input[type=text],input[type=date],input[type=search],textarea{font:400 15px "Be Vietnam Pro",sans-serif;color:var(--ink);background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:7px 10px;max-width:100%}
+textarea{width:100%;min-height:90px}
+.tw{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:560px}th,td{border:1px solid var(--bd);padding:8px 10px;text-align:left;background:var(--card)}th{background:var(--line)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 18px;border-radius:99px;font-weight:500;z-index:30}
+footer{max-width:1000px;margin:auto;padding:10px 20px 40px;color:var(--soft);font-size:14px}
+#chat-fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:20}
+#chat{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:min(360px,calc(100vw - 32px));height:min(480px,70vh);display:flex;flex-direction:column;z-index:21;padding:0;overflow:hidden}
+#chat .h{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--yel);color:var(--fix);font-weight:600;border-bottom:1px solid var(--bd)}
+#chat .h button{font-size:22px;background:none;border:0;color:var(--fix);cursor:pointer}
+#cb{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+.m{padding:8px 12px;border-radius:12px;max-width:85%;border:1px solid var(--bd);white-space:pre-wrap}
+.m.u{align-self:flex-end;background:var(--blue);color:var(--on)}.m.b{background:var(--card)}
+#chat form{display:flex;gap:6px;padding:8px;border-top:1px solid var(--bd)}#chat form input{flex:1;min-width:0}
+dialog{border:1px solid var(--bd);border-radius:14px;background:var(--card);color:var(--ink);text-align:center}
+.rt{display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center}
+@media print{header,#chat-fab,.row .btn,footer{display:none!important}body{background:#fff;color:#000}}
+
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}
+.steps a{color:var(--ink);text-decoration:none;display:block}
+.steps a i{font-size:26px;color:var(--blue);display:block;margin-bottom:8px}
+.ic{margin-right:7px}
+nav a i{margin-right:6px}
+.btn:disabled{opacity:.45;cursor:default;}
+select,input[type=text],input[type=date],input[type=search],textarea{font-size:16px}
+.tw th:first-child,.tw td:first-child{position:sticky;left:0}
+.prog{display:flex;align-items:center;gap:12px;margin:8px 0 14px;font-weight:500}.prog .bar{flex:1;margin:0}
+.qcard{padding:24px 18px;text-align:center}
+.qic{width:58px;height:58px;border-radius:50%;background:var(--yel);color:var(--fix);border:1px solid var(--bd);display:inline-flex;align-items:center;justify-content:center;font-size:24px}
+.qt{font-size:20px;line-height:1.45;margin:14px 0 18px}.qt:focus{outline:none}
+.anss{display:grid;gap:10px}
+.ans{font:500 17px "Be Vietnam Pro",sans-serif;display:flex;align-items:center;gap:14px;min-height:56px;padding:10px 16px;border:1px solid var(--bd);border-radius:12px;background:var(--card);color:var(--ink);cursor:pointer;text-align:left}
+.ans i{width:28px;text-align:center;font-size:22px}
+.ans.on{background:var(--blue);color:var(--on)}
+.nav2{display:flex;gap:10px;justify-content:space-between;margin-top:16px}
+@media(max-width:720px){
+body{padding-bottom:84px}
+.top{padding:12px 16px 0;flex-wrap:nowrap}
+.lb{display:none}
+.top nav{position:fixed;left:0;right:0;bottom:0;z-index:25;background:var(--card);border-top:1px solid var(--bd);display:grid;grid-template-columns:repeat(6,1fr);gap:0;padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px))}
+nav a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;padding:6px 2px;border-width:0;text-align:center}
+nav a i{margin:0;font-size:19px}
+main{padding:6px 16px 30px}
+h2{margin-top:.4em}
+.row .btn{flex:1 1 100%;text-align:center}
+.btn,.opt span{min-height:44px}.opt span{display:flex;align-items:center;padding:8px 16px}
+.card{}
+#chat-fab{bottom:calc(78px + env(safe-area-inset-bottom,0px));width:54px;height:54px;border-radius:50%;padding:0;font-size:22px}
+#chat{bottom:calc(78px + env(safe-area-inset-bottom,0px));right:12px;width:calc(100vw - 24px);height:min(480px,calc(100vh - 190px))}
+.toast{bottom:calc(92px + env(safe-area-inset-bottom,0px));width:max-content;max-width:calc(100vw - 32px);text-align:center}
+.nav2 .btn{flex:1}
+}
+
+.no{font-weight:600;font-size:24px;background:var(--yel);color:var(--fix);border:1px solid var(--bd);border-radius:10px;padding:0 12px}
+#chat-fab{width:54px;height:54px;border-radius:50%;padding:0;font-size:22px}
+.cbtn{display:flex;align-items:center;gap:12px;width:100%;margin:10px 0;text-align:left;font:inherit;color:var(--ink);cursor:pointer}
+.cbtn .cb{flex:1;min-width:0}.cbtn .cb>span:first-child{font-weight:600;display:block}
+.cbtn small{display:block;color:var(--soft);font-size:14px}
+.cbtn>i:last-child{color:var(--soft)}
+.cbtn:active{background:var(--line)}
+.cbtn .bar{margin:6px 0 0}
+dialog::backdrop{background:rgba(20,22,59,.45)}
+#pop{padding:0;text-align:left;width:min(560px,calc(100vw - 24px));max-height:86vh;overflow:hidden;position:fixed}
+#pb{padding:18px 18px 22px;overflow-y:auto;max-height:86vh}
+#pop .px{position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:50%;border:1px solid var(--bd);background:var(--card);color:var(--ink);cursor:pointer;font-size:16px}
+.pt{font-size:20px;margin:0 44px 2px 0}
+#navtg{display:none}
+@media(max-width:720px){
+#navtg{display:flex;align-items:center;justify-content:center;position:fixed;left:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));width:40px;height:40px;border-radius:50%;border:1px solid var(--bd);background:var(--card);color:var(--ink);font-size:16px;z-index:26;cursor:pointer;}
+.top nav{transition:transform .2s}
+.nav-off .top nav{transform:translateY(110%);visibility:hidden}
+.nav-off #navtg{bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+.nav-off #chat-fab,.nav-off #chat{bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+.nav-off .toast{bottom:calc(28px + env(safe-area-inset-bottom,0px))}
+body.nav-off{padding-bottom:20px}
+#pop{width:100%;max-width:100%;margin:auto 0 0;border-radius:16px 16px 0 0;max-height:88vh}
+#pb{padding-bottom:calc(22px + env(safe-area-inset-bottom,0px));max-height:88vh}
+}
+@media(prefers-reduced-motion:reduce){.top nav{transition:none}}
+
+b,strong,h1,h2,h3{font-weight:600}
+h2 i{color:var(--blue)}
+.btn{background:linear-gradient(135deg,#4F6BFF,#8B5CF6);color:#fff;border-color:transparent}
+.btn.alt{background:var(--card);color:var(--ink);border-color:var(--bd)}
+nav a[aria-current="page"]{background:#E6EBFF;color:var(--blue);border-color:transparent}
+.note{background:#FFF6D6;border:1px solid #F3DD8A}
+.card{border-color:var(--bd)}
+.ib{width:42px;height:42px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;flex:none;background:var(--line);background:color-mix(in srgb,var(--gc,#2C4BFF) 15%,#fff);color:var(--gc,#2C4BFF);font-size:18px}
+.sc{background:color-mix(in srgb,var(--gc) 8%,#fff);border-color:color-mix(in srgb,var(--gc) 35%,#fff)}
+.steps a .ib{margin-bottom:10px}.steps a i{font-size:18px;display:inline;margin:0;color:inherit}
+.hero{grid-template-columns:1fr;background:linear-gradient(135deg,#E3EBFF,#F6E8FF 50%,#FFEFD9);border:1px solid var(--bd);border-radius:22px;padding:28px 22px;margin-top:8px}
+.grad{background:linear-gradient(90deg,#3B6CFF,#8B5CF6,#E64980);-webkit-background-clip:text;background-clip:text;color:transparent}
+.filters button i{color:var(--gc,var(--blue))}
+.filters button[aria-pressed="true"]{background:var(--gc,var(--blue));color:#fff;border-color:transparent}
+.filters button[aria-pressed="true"] i{color:#fff}
+.qic{background:var(--line);background:color-mix(in srgb,var(--gc,#2C4BFF) 15%,#fff);color:var(--gc,var(--blue));border-color:transparent}
+.cbtn .no{background:var(--gc,var(--blue));color:#fff;border-color:transparent}
+.cbtn:hover{background:color-mix(in srgb,var(--blue) 5%,#fff)}
+#chat .h{background:linear-gradient(135deg,#4F6BFF,#8B5CF6);color:#fff;border-bottom:0}
+#chat .h button{color:#fff}
+.ans.on{border-color:transparent}

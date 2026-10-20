@@ -1,0 +1,30 @@
+.lg{max-width:420px;margin:40px auto}.lg input{width:100%}
+.abar{position:sticky;top:0;z-index:10;display:flex;flex-wrap:wrap;gap:10px 16px;justify-content:space-between;align-items:center;background:var(--bg);padding:12px 0;border-bottom:1px solid var(--bd);margin-bottom:12px}
+.dirty{background:var(--yel);color:var(--fix);border:1px solid var(--bd);border-radius:99px;padding:2px 12px;font-weight:600;font-size:14px}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 16px}
+.tabs button{font:500 15px "Be Vietnam Pro",sans-serif;padding:7px 14px;border:1px solid var(--bd);border-radius:99px;background:var(--card);color:var(--ink);cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--blue);color:var(--on)}
+.ad-item{margin:10px 0;padding:0}
+.ad-item>summary{display:flex;gap:10px;align-items:center;padding:12px 16px;cursor:pointer;font-weight:600;list-style:none}
+.ad-item>summary::-webkit-details-marker{display:none}
+.ad-item>summary .sn{flex:1;min-width:0}
+.ad-item[open]>summary{border-bottom:1px dashed var(--bd)}
+.ad-body{padding:14px 16px 16px;display:grid;gap:12px}
+.ad-body label,.fld{display:block;font-weight:500;font-size:14px;color:var(--soft)}
+.ad-body input[type=text],.ad-body textarea,.ad-body select,.fld input[type=text]{width:100%;margin-top:4px;color:var(--ink);font-weight:400}
+.ad-body textarea{min-height:70px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.tools{display:flex;flex-wrap:wrap;gap:8px}
+.btn.del{color:#C62255}
+.lrow{display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap}
+.lrow input[type=text]{flex:1;min-width:160px}
+.lrow input[type=color]{width:44px;height:36px;padding:0;border:1px solid var(--bd);border-radius:8px;background:var(--card)}
+.gk{width:70px!important;flex:none!important}
+.pv{display:inline-flex;width:34px;height:34px;border-radius:10px;align-items:center;justify-content:center;color:#fff;flex:none}
+.gdot{display:inline-block;width:12px;height:12px;border-radius:50%;flex:none}
+.errs{background:#FFE3EC;border:1px solid #C62255;border-radius:12px;padding:10px 16px;margin:12px 0}
+.errs ul{margin:4px 0 0;padding-left:20px}
+.ad-count{font-size:14px;color:var(--soft);font-weight:400}
+.mini{padding:4px 10px;font-size:13px}
+#jsonbox{min-height:220px;font:13px/1.4 ui-monospace,monospace}
+.tw td.c{text-align:center}

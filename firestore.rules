@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Ai cũng đọc được. Ghi được nếu dữ liệu đúng cấu trúc (không còn đăng nhập, mật khẩu chỉ chặn ở giao diện admin).
+    match /site/{doc} {
+      allow read: if true;
+      allow write: if request.resource.data.groups is list
+                   && request.resource.data.careers is list
+                   && request.resource.data.questions is list
+                   && request.resource.data.electives is list
+                   && request.resource.data.surveySubjects is list
+                   && request.resource.data.keys().hasOnly(['groups','careers','questions','electives','surveySubjects','boost','todo','updatedAt']);
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
