@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI SMART — Học cùng AI đúng cách</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="style.css" />
+<style>
+  .role-choice{ display:flex; gap:10px; margin:2px 0 4px; }
+  .role-option{ flex:1; border:1.5px solid var(--border); border-radius:12px; padding:10px 8px;
+    text-align:center; cursor:pointer; font-size:12.5px; font-weight:600; color:var(--text-mid); }
+  .role-option input{ display:none; }
+  .role-option:has(input:checked){ border-color:var(--orange); color:var(--orange2); background:rgba(230,126,34,0.06); }
+</style>
+</head>
+<body>
+
+<div id="authScreen" class="auth-screen">
+  <div class="auth-card">
+    <h1>AI SMART</h1>
+    <p class="subtitle">Nền tảng học tập cùng AI theo phương pháp SMART: gợi ý thay vì đưa đáp án ngay.</p>
+    <div class="tabs">
+      <button id="tabLogin" class="tab active">Đăng nhập</button>
+      <button id="tabSignup" class="tab">Đăng ký</button>
+    </div>
+    <input id="authEmail" type="email" placeholder="Email" autocomplete="username" />
+    <input id="authPassword" type="password" placeholder="Mật khẩu" autocomplete="current-password" />
+    <div id="roleChoice" class="role-choice" style="display:none;">
+      <label class="role-option">
+        <input type="radio" name="authRole" value="student" checked />
+        <span><i class="fa-solid fa-user-graduate"></i> Tôi là học sinh</span>
+      </label>
+      <label class="role-option">
+        <input type="radio" name="authRole" value="teacher" />
+        <span><i class="fa-solid fa-chalkboard-user"></i> Tôi là giáo viên</span>
+      </label>
+    </div>
+    <button id="submitBtn" class="primary-btn">Đăng nhập</button>
+    <div id="authMessage" class="auth-message"></div>
+  </div>
+</div>
+
+<div id="dashboard" style="display:none;">
+  <section class="hero">
+    <div class="hero-eyebrow"><i class="fa-solid fa-graduation-cap"></i> Phương pháp SMART · 5 bước</div>
+    <h1 class="hero-h1">AI SMART</h1>
+    <p class="hero-sub">Nêu vấn đề → Xác định chỗ thiếu → Gợi ý hướng đi → Tự hoàn thành → Kiểm tra & Giải thích.</p>
+  </section>
+
+  <main class="content">
+    <!-- ═══ Khối kiểm soát việc dùng AI — 5 bước trực quan ═══ -->
+    <div class="control-banner">
+      <div class="badge-line"><i class="fa-solid fa-shield-heart"></i> Học chủ động, không lệ thuộc AI</div>
+      <h3>AI SMART hướng dẫn bạn từng bước ra sao?</h3>
+      <p>Mục tiêu của AI SMART là giúp học sinh <strong>làm chủ việc học</strong>, dùng AI như một người hướng dẫn — không phải cái máy trả lời hộ. Mỗi câu hỏi đều đi qua đúng 5 bước sau:</p>
+    </div>
+
+    <div class="steps-flow">
+      <div class="step-node" style="--step-color-1:#f39c12; --step-color-2:#e67e22; --step-shadow:rgba(243,156,18,0.35);">
+        <div class="step-circle"><i class="fa-solid fa-comment-dots"></i><span class="step-num">1</span></div>
+        <div class="step-label">Nêu vấn đề</div>
+        <div class="step-desc">Kể cho AI biết bạn đang vướng gì, đã thử gì rồi</div>
+      </div>
+      <div class="step-node" style="--step-color-1:#e67e22; --step-color-2:#d35400; --step-shadow:rgba(230,126,34,0.35);">
+        <div class="step-circle"><i class="fa-solid fa-magnifying-glass"></i><span class="step-num">2</span></div>
+        <div class="step-label">Xác định chỗ thiếu</div>
+        <div class="step-desc">AI tìm đúng phần kiến thức bạn còn thiếu</div>
+      </div>
+      <div class="step-node" style="--step-color-1:#d35400; --step-color-2:#c0392b; --step-shadow:rgba(211,84,0,0.35);">
+        <div class="step-circle"><i class="fa-solid fa-lightbulb"></i><span class="step-num">3</span></div>
+        <div class="step-label">Gợi ý hướng đi</div>
+        <div class="step-desc">Gợi ý công thức/hướng làm — không giải hộ</div>
+      </div>
+      <div class="step-node" style="--step-color-1:#1f9d6c; --step-color-2:#17a673; --step-shadow:rgba(31,157,108,0.35);">
+        <div class="step-circle"><i class="fa-solid fa-pen"></i><span class="step-num">4</span></div>
+        <div class="step-label">Tự hoàn thành</div>
+        <div class="step-desc">Bạn tự làm bài dựa trên gợi ý đó</div>
+      </div>
+      <div class="step-node" style="--step-color-1:#3b6cf6; --step-color-2:#2c58d6; --step-shadow:rgba(59,108,246,0.35);">
+        <div class="step-circle"><i class="fa-solid fa-check-double"></i><span class="step-num">5</span></div>
+        <div class="step-label">Kiểm tra & Giải thích</div>
+        <div class="step-desc">AI chấm đúng/sai và giải thích rõ vì sao</div>
+      </div>
+    </div>
+
+    <div class="landing-grid" style="margin-top:56px;">
+      <a class="feature-card" href="chatbot.html">
+        <div class="feat-icon"><i class="fa-solid fa-comments"></i></div>
+        <h2>AI SMART Chatbot</h2>
+        <p>Hỏi bài như bình thường, nhưng AI sẽ hướng dẫn theo 5 bước thay vì đưa đáp án ngay, giúp bạn thực sự hiểu bài.</p>
+      </a>
+      <a class="feature-card" href="passport.html">
+        <div class="feat-icon"><i class="fa-solid fa-route"></i></div>
+        <h2>AI Learning Passport</h2>
+        <p>Xem lại lịch sử sử dụng AI, biểu đồ tiến bộ, và chỉ số AI Crutch Index (ACI) đánh giá mức độ phụ thuộc vào AI.</p>
+      </a>
+    </div>
+
+    <div style="text-align:center; margin-top:40px;">
+      <p style="font-size:12.5px; color:var(--text-dim);">
+        API đã được cấu hình sẵn — dùng ngay không cần cài đặt gì thêm.
+      </p>
+      <a class="download-ext-btn" href="extension-v4.zip" download>
+        <i class="fa-solid fa-puzzle-piece"></i> Tải tiện ích Chrome
+      </a>
+    </div>
+  </main>
+</div>
+
+<script src="nav.js"></script>
+<script type="module">
+  import { watchAuth, login, signup, logout, translateFirebaseError, getUserProfile } from "./auth-web.js";
+
+  const authScreen = document.getElementById("authScreen");
+  const dashboard = document.getElementById("dashboard");
+  const authEmail = document.getElementById("authEmail");
+  const authPassword = document.getElementById("authPassword");
+  const authMessage = document.getElementById("authMessage");
+  const submitBtn = document.getElementById("submitBtn");
+  const tabLogin = document.getElementById("tabLogin");
+  const tabSignup = document.getElementById("tabSignup");
+  const roleChoice = document.getElementById("roleChoice");
+
+  const nav = renderSiteNav("home");
+
+  let mode = "login";
+  function setMode(m) {
+    mode = m;
+    tabLogin.classList.toggle("active", m === "login");
+    tabSignup.classList.toggle("active", m === "signup");
+    submitBtn.textContent = m === "login" ? "Đăng nhập" : "Đăng ký";
+    roleChoice.style.display = m === "signup" ? "flex" : "none";
+    authMessage.textContent = "";
+  }
+  tabLogin.onclick = () => setMode("login");
+  tabSignup.onclick = () => setMode("signup");
+
+  submitBtn.onclick = async () => {
+    const email = authEmail.value.trim();
+    const password = authPassword.value;
+    authMessage.textContent = "";
+    if (!email || !password) { authMessage.textContent = "Vui lòng nhập đầy đủ email và mật khẩu."; return; }
+    try {
+      if (mode === "login") await login(email, password);
+      else {
+        if (password.length < 6) { authMessage.textContent = "Mật khẩu phải có ít nhất 6 ký tự."; return; }
+        const role = document.querySelector('input[name="authRole"]:checked').value;
+        await signup(email, password, role);
+      }
+    } catch (err) {
+      authMessage.textContent = translateFirebaseError(err);
+    }
+  };
+
+  watchAuth(
+    async (user) => {
+      // Giáo viên có trang riêng — điều hướng ngay, không hiện dashboard học sinh
+      const profile = await getUserProfile(user.uid);
+      if (profile.role === "teacher") {
+        window.location.href = "teacher.html";
+        return;
+      }
+      authScreen.style.display = "none";
+      dashboard.style.display = "block";
+      nav.setUser(user.email, () => logout());
+    },
+    () => {
+      authScreen.style.display = "flex";
+      dashboard.style.display = "none";
+      nav.setUser(null);
+    }
+  );
+</script>
+</body>
+</html>
