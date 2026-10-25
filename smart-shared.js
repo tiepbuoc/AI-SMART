@@ -83,24 +83,53 @@ const ACI_RUBRIC = `RUBRIC CHẤM ĐIỂM CỐ ĐỊNH (áp dụng y hệt cho m
   81-100: effort gần như không có, aci rất cao — ỷ lại AI rõ rệt, nên điều chỉnh thói quen`;
 
 // ============ 3. HÀM GỌI API (dùng chung, theo định dạng OpenAI-compatible) ============
+// Model dự phòng: "model" có thể là 1 chuỗi hoặc 1 mảng model theo thứ tự ưu tiên.
+// Gặp HTTP 503 (quá tải) → thử model kế tiếp (xoay vòng). Model chạy được sẽ được nhớ cho các lần gọi sau;
+// chỉ khi TẤT CẢ model đều 503 mới báo lỗi và lần sau dò lại từ model đầu.
+let activeModelName = null;
+
+// Một số model có trần max_tokens thấp hơn mặc định 20000 của phân tích hàng loạt → hạ xuống để không bị lỗi 400.
+const MODEL_MAX_TOKENS = { "gpt-4o-mini": 16384 };
+
 export async function callAiApi({ endpoint, apiKey, model, messages, maxTokens = 20000 }) {
   const cleanEndpoint = endpoint.trim().replace(/\/$/, "");
-  const res = await fetch(`${cleanEndpoint}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: "Bearer " + apiKey,
-    },
-    body: JSON.stringify({ model, messages, max_tokens: maxTokens }),
-  });
+  const models = (Array.isArray(model) ? model : [model]).filter(Boolean);
+  let start = models.indexOf(activeModelName);
+  if (start < 0) start = 0;
 
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`HTTP ${res.status}: ${errText}`);
+  for (let i = 0; i < models.length; i++) {
+    const m = models[(start + i) % models.length];
+    const res = await fetch(`${cleanEndpoint}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + apiKey,
+      },
+      body: JSON.stringify({
+        model: m,
+        messages,
+        max_tokens: Math.min(maxTokens, MODEL_MAX_TOKENS[m] || maxTokens),
+      }),
+    });
+
+    if (res.status === 503) {
+      console.warn(`AI SMART: model ${m} đang quá tải (503), thử model kế tiếp...`);
+      await res.text().catch(() => "");
+      continue;
+    }
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`HTTP ${res.status}: ${errText}`); // lỗi khác 503 thì không đổi model
+    }
+
+    activeModelName = m; // ghi nhớ model đang hoạt động
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content ?? "";
   }
 
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content ?? "";
+  activeModelName = null; // tất cả đều 503 → lần sau kiểm tra lại từ model đầu
+  throw new Error("HTTP 503: tất cả model AI đều đang quá tải");
 }
 
 // ============ 4. PHÂN TÍCH HÀNG LOẠT PROMPT CHƯA ĐƯỢC PHÂN TÍCH ============

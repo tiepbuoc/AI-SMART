@@ -65,7 +65,9 @@ export async function getUserProfile(uid) {
 // ---- Cấu hình API cố định (theo yêu cầu, không cần trang Cài đặt nữa) ----
 const FIXED_API_CONFIG = {
   endpoint: "https://api.shopaikey.com/v1",
-  model: "gpt-4.1-mini-2025-04-14",
+  // Danh sách model theo thứ tự ưu tiên: gặp HTTP 503 (quá tải) thì callAiApi tự chuyển sang model kế tiếp.
+  // (Giữ tên trường "model" để chatbot.html / passport.html không phải sửa — callAiApi nhận cả chuỗi lẫn mảng.)
+  model: ["gpt-4.1-mini-2025-04-14", "gpt-4o-mini", "gpt-5-mini"],
   apiKey: "sk-4150297863e3eee405805e8609648e6c5cebb1b502ffb46e",
 };
 
