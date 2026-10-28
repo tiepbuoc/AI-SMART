@@ -164,7 +164,7 @@
 <script src="nav.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script type="module">
-import { watchAuth, getApiConfig, logout, getUserProfile } from "./auth-web.js";
+import { watchAuth, logout, getUserProfile } from "./auth-web.js";
 import { db } from "./firebase-config.js";
 import {
   collection, query, where, getDocs, doc, updateDoc,
@@ -261,9 +261,6 @@ async function syncClassSummaryIfNeeded() {
 
 async function runPipeline(uid) {
   try {
-    loadingText.textContent = "Đang tải cấu hình API...";
-    const apiConfig = await getApiConfig();
-
     loadingText.textContent = "Đang tải lịch sử sử dụng AI...";
     const entriesCol = collection(db, "users", uid, "entries");
 
@@ -271,17 +268,10 @@ async function runPipeline(uid) {
     const unanalyzed = unanalyzedSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
     if (unanalyzed.length > 0) {
-      if (!apiConfig.apiKey) {
-        loadingText.textContent = `Có ${unanalyzed.length} câu hỏi chưa phân tích nhưng chưa có API key.`;
-      } else {
+      {
         loadingText.textContent = `Đang phân tích ${unanalyzed.length} câu hỏi mới bằng AI...`;
         const texts = unanalyzed.map((e) => e.text || "");
-        const results = await analyzePromptsBatch({
-          endpoint: apiConfig.endpoint,
-          apiKey: apiConfig.apiKey,
-          model: apiConfig.model,
-          prompts: texts,
-        });
+        const results = await analyzePromptsBatch({ prompts: texts });
 
         loadingText.textContent = "Đang lưu kết quả phân tích...";
         for (let i = 0; i < unanalyzed.length; i++) {

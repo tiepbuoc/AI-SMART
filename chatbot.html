@@ -163,12 +163,12 @@
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
 
 <script type="module">
-import { watchAuth, getApiConfig, logout, getUserProfile } from "./auth-web.js";
+import { watchAuth, logout, getUserProfile } from "./auth-web.js";
 import { db } from "./firebase-config.js";
 import {
   collection, addDoc, updateDoc, deleteDoc, doc, getDocs, query, orderBy, serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { SMART_SYSTEM_PROMPT, callAiApi } from "./smart-shared.js";
+import { askTutor, prefetchToken, friendlyError } from "./ai-gateway.js";
 
 const guard = document.getElementById("guard");
 const chatLayout = document.getElementById("chatLayout");
@@ -199,8 +199,7 @@ introCloseBtn.onclick = () => {
 helpBtn.onclick = () => { introOverlay.style.display = "flex"; };
 
 let currentUser = null;
-let apiConfig = null;
-let history = [{ role: "system", content: SMART_SYSTEM_PROMPT }];
+let history = []; // lịch sử hội thoại (prompt hệ thống do n8n quyết định)
 let conversations = []; // { id, title, messages, updatedAt }
 let activeConvId = null;
 
@@ -212,7 +211,7 @@ watchAuth(
     const profile = await getUserProfile(user.uid);
     if (profile.role === "teacher") { window.location.href = "teacher.html"; return; }
     currentUser = user;
-    apiConfig = await getApiConfig();
+    prefetchToken(); // xin token AI sẵn để câu hỏi đầu tiên không phải chờ
     guard.style.display = "none";
     chatLayout.style.display = "flex";
     nav.setUser(user.email, () => logout());
@@ -282,7 +281,7 @@ function formatRelTime(ts) {
 
 function startNewConversation() {
   activeConvId = null;
-  history = [{ role: "system", content: SMART_SYSTEM_PROMPT }];
+  history = [];
   chatEl.innerHTML = "";
   renderConvList();
 }
@@ -291,7 +290,7 @@ function selectConversation(convId) {
   const conv = conversations.find((c) => c.id === convId);
   if (!conv) return;
   activeConvId = convId;
-  history = [{ role: "system", content: SMART_SYSTEM_PROMPT }, ...(conv.messages || [])];
+  history = [...(conv.messages || [])];
   chatEl.innerHTML = "";
   (conv.messages || []).forEach((m) => {
     const role = m.role === "user" ? "user" : "bot";
@@ -375,7 +374,6 @@ async function logToFirestore(userText, botReply) {
 async function sendMessage(){
   const text = textInput.value.trim();
   if (!text) return;
-  if (!apiConfig || !apiConfig.apiKey) return;
 
   addMessageToUI('user', text);
   history.push({ role: 'user', content: text });
@@ -386,12 +384,7 @@ async function sendMessage(){
   bot.body.textContent = '...';
 
   try {
-    const reply = await callAiApi({
-      endpoint: apiConfig.endpoint,
-      apiKey: apiConfig.apiKey,
-      model: apiConfig.model,
-      messages: history,
-    });
+    const reply = await askTutor(history);
     const finalReply = reply || '(Không có nội dung trả về)';
     renderBotContent(bot.body, finalReply);
     history.push({ role: 'assistant', content: finalReply });
@@ -399,7 +392,7 @@ async function sendMessage(){
     await persistConversation();
   } catch (err) {
     bot.wrap.remove();
-    addMessageToUI('error', 'Lỗi khi gọi API: ' + err.message);
+    addMessageToUI('error', 'Lỗi: ' + friendlyError(err));
   } finally {
     sendBtn.disabled = false;
   }
