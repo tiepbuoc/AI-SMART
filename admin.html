@@ -64,6 +64,17 @@
   .inline-login{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
   .inline-login input{ flex:1; min-width:150px; padding:9px 14px; border:1.5px solid var(--border); border-radius:12px;
     font-size:13px; font-family:'DM Sans',sans-serif; background:#fff; }
+  .pager{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-top:14px;
+    font-size:12.5px; color:var(--text-mid); }
+  .pager .ctrl{ display:flex; align-items:center; gap:6px; }
+  .pager .pg-info{ min-width:92px; text-align:center; font-weight:700; color:var(--text-dark); }
+  .pg-btn{ width:36px; height:36px; border:1.5px solid var(--border); border-radius:10px; background:#fff; cursor:pointer;
+    color:var(--text-dark); font-size:13px; }
+  .pg-btn:hover:not(:disabled){ border-color:var(--orange); color:var(--orange2); }
+  .pg-btn:disabled{ opacity:.4; cursor:not-allowed; }
+  .pager select{ padding:7px 10px; border:1.5px solid var(--border); border-radius:10px; font-size:12.5px; background:#fff; font-family:'DM Sans',sans-serif; }
+  .filter-chip{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:-4px 0 12px; font-size:12.5px; color:var(--text-mid); }
+  .filter-chip b{ color:var(--orange2); }
   .chart-card{ background:var(--card-bg); border:1.5px solid var(--border); border-radius:20px; padding:18px 20px; }
   .chart-card canvas{ max-height:240px; }
   .charts-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px; }
@@ -78,7 +89,7 @@
     <div class="lock"><i class="fa-solid fa-lock"></i></div>
     <h1>Khu vực quản trị</h1>
     <p class="subtitle">Nhập mật khẩu để tiếp tục.</p>
-    <input id="gatePass" type="password" placeholder="Mật khẩu quản trị" autocomplete="off" />
+    <input id="gatePass" type="password" placeholder="Mật khẩu quản trị" autocomplete="new-password" />
     <button id="gateBtn" class="primary-btn">Vào trang quản trị</button>
     <div id="gateMsg" class="auth-message"></div>
   </div>
@@ -126,7 +137,7 @@
     <!-- Tab tài khoản -->
     <div id="tab-users" class="card">
       <div class="filter-row">
-        <input id="userSearch" type="text" placeholder="Tìm theo email..." />
+        <input id="userSearch" name="adm_filter_users" type="search" placeholder="Tìm theo email..." autocomplete="off" autocapitalize="off" spellcheck="false" readonly />
         <select id="userRole">
           <option value="">Tất cả vai trò</option>
           <option value="student">Học sinh</option>
@@ -134,28 +145,32 @@
         </select>
         <button id="exportUsers" class="ghost-btn"><i class="fa-solid fa-file-csv"></i> Xuất CSV</button>
       </div>
+      <div id="usersChip" class="filter-chip hidden"></div>
       <div class="table-scroll">
         <table>
           <thead><tr><th>Email</th><th>Vai trò</th><th>Lớp (classId)</th><th>Ngày tạo</th></tr></thead>
           <tbody id="usersBody"></tbody>
         </table>
       </div>
-      <div id="usersEmpty" class="empty-state hidden">Không có tài khoản nào để hiển thị.</div>
+      <div id="usersEmpty" class="empty-state hidden"></div>
+      <div id="usersPager" class="pager"></div>
     </div>
 
     <!-- Tab lớp học -->
     <div id="tab-classes" class="card hidden">
       <div class="filter-row">
-        <input id="classSearch" type="text" placeholder="Tìm theo mã lớp hoặc email giáo viên..." />
+        <input id="classSearch" name="adm_filter_classes" type="search" placeholder="Tìm theo mã lớp hoặc email giáo viên..." autocomplete="off" autocapitalize="off" spellcheck="false" readonly />
         <button id="exportClasses" class="ghost-btn"><i class="fa-solid fa-file-csv"></i> Xuất CSV</button>
       </div>
+      <div id="classesChip" class="filter-chip hidden"></div>
       <div class="table-scroll">
         <table>
           <thead><tr><th>Mã lớp</th><th>Giáo viên</th><th>Số học sinh</th><th>ACI TB</th><th>Rủi ro cao</th><th>Ngày tạo</th></tr></thead>
           <tbody id="classesBody"></tbody>
         </table>
       </div>
-      <div id="classesEmpty" class="empty-state hidden">Không có lớp học nào để hiển thị.</div>
+      <div id="classesEmpty" class="empty-state hidden"></div>
+      <div id="classesPager" class="pager"></div>
 
       <div id="classDetail" class="hidden" style="margin-top:22px;">
         <h3 class="section-title" style="font-size:15px;" id="classDetailTitle"></h3>
@@ -165,6 +180,7 @@
             <tbody id="detailBody"></tbody>
           </table>
         </div>
+        <div id="detailPager" class="pager"></div>
       </div>
     </div>
   </main>
@@ -260,6 +276,7 @@ function showNotice(html, isErr) {
 
 async function loadData() {
   showNotice("");
+  $("userSearch").value = ""; $("classSearch").value = ""; $("userRole").value = "";
   try {
     const [uSnap, cSnap] = await Promise.all([
       getDocs(collection(db, "users")),
@@ -279,7 +296,9 @@ async function loadData() {
       return { id: d.id, code: x.code || "", teacherEmail: x.teacherEmail || "", createdAt: x.createdAt || null, members };
     }));
     loaded = true;
+    if (detailClass) detailClass = classes.find((c) => c.id === detailClass.id) || null;
     renderAll();
+    if (detailClass) renderDetail(false);
   } catch (err) {
     loaded = false; users = []; classes = [];
     renderAll();
@@ -311,6 +330,54 @@ async function loadData() {
 }
 
 /* ══════════ 3. HIỂN THỊ ══════════ */
+const pg = {
+  users:   { page: 1, size: 10 },
+  classes: { page: 1, size: 10 },
+  detail:  { page: 1, size: 10 },
+};
+function paginate(key, rows) {
+  const st = pg[key];
+  const pages = Math.max(1, Math.ceil(rows.length / st.size));
+  st.page = Math.min(Math.max(1, st.page), pages);
+  const start = (st.page - 1) * st.size;
+  return { slice: rows.slice(start, start + st.size), pages, start, total: rows.length };
+}
+function renderPager(key, el, info, rerender) {
+  const st = pg[key];
+  if (info.total === 0) { el.innerHTML = ""; return; }
+  const from = info.start + 1, to = Math.min(info.start + st.size, info.total);
+  el.innerHTML = `
+    <div>Hiển thị <b>${from}–${to}</b> / ${info.total}</div>
+    <div class="ctrl">
+      <button class="pg-btn" data-a="first" title="Trang đầu" ${st.page <= 1 ? "disabled" : ""}><i class="fa-solid fa-angles-left"></i></button>
+      <button class="pg-btn" data-a="prev" title="Trang trước" ${st.page <= 1 ? "disabled" : ""}><i class="fa-solid fa-angle-left"></i></button>
+      <span class="pg-info">Trang ${st.page} / ${info.pages}</span>
+      <button class="pg-btn" data-a="next" title="Trang sau" ${st.page >= info.pages ? "disabled" : ""}><i class="fa-solid fa-angle-right"></i></button>
+      <button class="pg-btn" data-a="last" title="Trang cuối" ${st.page >= info.pages ? "disabled" : ""}><i class="fa-solid fa-angles-right"></i></button>
+    </div>
+    <div>Dòng/trang
+      <select>${[10, 20, 50].map((n) => `<option value="${n}" ${n === st.size ? "selected" : ""}>${n}</option>`).join("")}</select>
+    </div>`;
+  el.querySelectorAll("button[data-a]").forEach((b) => {
+    b.onclick = () => {
+      const a = b.dataset.a;
+      if (a === "first") st.page = 1;
+      else if (a === "prev") st.page--;
+      else if (a === "next") st.page++;
+      else if (a === "last") st.page = info.pages;
+      rerender();
+    };
+  });
+  el.querySelector("select").onchange = (e) => { st.size = Number(e.target.value); st.page = 1; rerender(); };
+}
+function setChip(el, text, onClear) {
+  if (!text) { el.classList.add("hidden"); el.innerHTML = ""; return; }
+  el.classList.remove("hidden");
+  el.innerHTML = `<span><i class="fa-solid fa-filter"></i> Đang lọc: <b></b></span><button class="ghost-btn" style="padding:4px 10px;">Xóa bộ lọc</button>`;
+  el.querySelector("b").textContent = text;
+  el.querySelector("button").onclick = onClear;
+}
+
 function renderAll() {
   $("stUsers").textContent = loaded ? users.length : "-";
   $("stStudents").textContent = loaded ? users.filter((u) => u.role === "student").length : "-";
@@ -325,15 +392,29 @@ function renderUsers() {
   const rows = users
     .filter((u) => (!q || u.email.toLowerCase().includes(q)) && (!role || u.role === role))
     .sort((a, b) => (tsToDate(b.createdAt)?.getTime() || 0) - (tsToDate(a.createdAt)?.getTime() || 0));
+
+  const info = paginate("users", rows);
   const body = $("usersBody"); body.innerHTML = "";
-  rows.forEach((u) => {
+  info.slice.forEach((u) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td></td><td><span class="pill ${u.role}">${u.role === "teacher" ? "Giáo viên" : "Học sinh"}</span></td><td></td><td>${fmtDate(u.createdAt)}</td>`;
     tr.children[0].textContent = u.email || u.uid;
     tr.children[2].textContent = u.classId || "-";
     body.appendChild(tr);
   });
-  $("usersEmpty").classList.toggle("hidden", rows.length > 0);
+
+  const filtering = !!(q || role);
+  const parts = [];
+  if (q) parts.push(`email chứa "${$("userSearch").value.trim()}"`);
+  if (role) parts.push(role === "teacher" ? "giáo viên" : "học sinh");
+  setChip($("usersChip"), filtering ? parts.join(" + ") : "", () => {
+    $("userSearch").value = ""; $("userRole").value = ""; pg.users.page = 1; renderUsers();
+  });
+
+  const empty = $("usersEmpty");
+  empty.classList.toggle("hidden", rows.length > 0);
+  empty.textContent = filtering ? "Không có tài khoản nào khớp bộ lọc." : "Chưa có tài khoản nào để hiển thị.";
+  renderPager("users", $("usersPager"), info, renderUsers);
 }
 
 function classStats(c) {
@@ -346,34 +427,45 @@ function classStats(c) {
 function renderClasses() {
   const q = $("classSearch").value.trim().toLowerCase();
   const rows = classes.filter((c) => !q || c.code.toLowerCase().includes(q) || c.teacherEmail.toLowerCase().includes(q));
+  const info = paginate("classes", rows);
   const body = $("classesBody"); body.innerHTML = "";
-  rows.forEach((c) => {
+  info.slice.forEach((c) => {
     const s = classStats(c);
     const tr = document.createElement("tr");
     tr.className = "clickable";
     tr.innerHTML = `<td><b></b></td><td></td><td>${c.members.length}</td><td>${s.avgAci}</td><td>${s.high}</td><td>${fmtDate(c.createdAt)}</td>`;
     tr.querySelector("b").textContent = c.code;
     tr.children[1].textContent = c.teacherEmail || "-";
-    tr.onclick = () => showClassDetail(c);
+    tr.onclick = () => { detailClass = c; pg.detail.page = 1; renderDetail(true); };
     body.appendChild(tr);
   });
-  $("classesEmpty").classList.toggle("hidden", rows.length > 0);
+  setChip($("classesChip"), q ? `"${$("classSearch").value.trim()}"` : "", () => {
+    $("classSearch").value = ""; pg.classes.page = 1; renderClasses();
+  });
+  const empty = $("classesEmpty");
+  empty.classList.toggle("hidden", rows.length > 0);
+  empty.textContent = q ? "Không có lớp nào khớp bộ lọc." : "Chưa có lớp học nào để hiển thị.";
+  renderPager("classes", $("classesPager"), info, renderClasses);
 }
 
-function showClassDetail(c) {
+let detailClass = null;
+function renderDetail(scroll) {
+  const c = detailClass;
+  if (!c) return;
   $("classDetail").classList.remove("hidden");
-  $("classDetailTitle").textContent = `Học sinh trong lớp ${c.code}`;
+  $("classDetailTitle").textContent = `Học sinh trong lớp ${c.code} (${c.members.length})`;
   const body = $("detailBody"); body.innerHTML = "";
-  if (!c.members.length) {
-    body.innerHTML = `<tr><td colspan="6" class="empty-state">Lớp chưa có học sinh.</td></tr>`;
-  }
-  c.members.slice().sort((a, b) => (b.avgAci || 0) - (a.avgAci || 0)).forEach((m) => {
+  const rows = c.members.slice().sort((a, b) => (b.avgAci || 0) - (a.avgAci || 0));
+  const info = paginate("detail", rows);
+  if (!rows.length) body.innerHTML = `<tr><td colspan="6" class="empty-state">Lớp chưa có học sinh.</td></tr>`;
+  info.slice.forEach((m) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td></td><td>${m.avgAci ?? "-"}</td><td>${m.avgEffort ?? "-"}</td><td>${m.avgComplexity ?? "-"}</td><td>${m.entryCount ?? 0}</td><td>${riskPill(m.riskBand)}</td>`;
     tr.children[0].textContent = m.email || m.uid;
     body.appendChild(tr);
   });
-  $("classDetail").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  renderPager("detail", $("detailPager"), info, () => renderDetail(false));
+  if (scroll) $("classDetail").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 let riskChart = null, classChart = null;
@@ -431,9 +523,17 @@ document.querySelectorAll(".tab-btn").forEach((b) => {
     $("tab-classes").classList.toggle("hidden", b.dataset.tab !== "classes");
   };
 });
-$("userSearch").oninput = renderUsers;
-$("userRole").onchange = renderUsers;
-$("classSearch").oninput = renderClasses;
+// Ô tìm kiếm để readonly cho đến khi người dùng thực sự bấm vào -> trình duyệt không tự điền (autofill) làm lọc mất dữ liệu
+["userSearch", "classSearch"].forEach((id) => {
+  const el = $(id);
+  const unlockInput = () => el.removeAttribute("readonly");
+  el.addEventListener("focus", unlockInput);
+  el.addEventListener("pointerdown", unlockInput);
+  el.value = "";
+});
+$("userSearch").oninput = () => { pg.users.page = 1; renderUsers(); };
+$("userRole").onchange = () => { pg.users.page = 1; renderUsers(); };
+$("classSearch").oninput = () => { pg.classes.page = 1; renderClasses(); };
 $("refreshBtn").onclick = loadData;
 
 /* ══════════ 5. KHỞI ĐỘNG ══════════ */
@@ -444,11 +544,16 @@ function openAdmin() {
 }
 
 // Khi trạng thái Firebase thay đổi (vd. vừa đăng nhập tài khoản quản trị), tải lại dữ liệu
-let firstAuth = true;
-onAuthStateChanged(auth, () => {
-  if (firstAuth) { firstAuth = false; return; }
-  if (readSession()) loadData();
+let firstAuth = true, lastUid = null;
+onAuthStateChanged(auth, (user) => {
+  const uid = user ? user.uid : null;
+  if (firstAuth) { firstAuth = false; lastUid = uid; return; }
+  if (uid !== lastUid) { lastUid = uid; if (readSession() && !loaded) loadData(); }
 });
+
+// Lỗi JS bất ngờ sẽ hiện ngay trên trang thay vì im lặng
+window.addEventListener("error", (e) => showNotice(`Lỗi trang: ${e.message}`, true));
+window.addEventListener("unhandledrejection", (e) => showNotice(`Lỗi: ${(e.reason && e.reason.message) || e.reason}`, true));
 
 if (readSession()) openAdmin();
 else $("gatePass").focus();
